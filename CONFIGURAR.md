@@ -17,7 +17,7 @@ Deve aparecer "Success". Pode rodar de novo sem perder dados.
 1. **Edge Functions → Deploy a new function → Via Editor**.
 2. Nome: `ler-capa` (exatamente assim).
 3. Apague o exemplo, cole todo o conteúdo de [`supabase/functions/ler-capa/index.ts`](supabase/functions/ler-capa/index.ts) → **Deploy**.
-4. Deixe ligada a opção de exigir login (**Verify JWT**).
+4. Em **Details/Settings** da função, **desligue "Verify JWT"** (ou "Enforce JWT verification"). A própria função confere o login de quem chama; a verificação antiga do Supabase não aceita as chaves novas e faria a leitura falhar.
 
 ## 5. Cadastrar a chave do Claude
 **Edge Functions → Secrets → Add new secret**:
@@ -31,7 +31,8 @@ Dica: no console da Anthropic, defina um limite de gasto mensal.
 - **Project URL** (ex.: `https://abcd1234.supabase.co`)
 - a chave **anon public**
 
-e coloque em [`config.js`](config.js). A chave *anon* é pública por natureza; **nunca** use a chave *service_role* no app.
+e coloque em [`config.js`](config.js). Nos projetos novos, use a **publishable key** (`sb_publishable_...`) no lugar da *anon*.
+A chave *anon*/*publishable* é pública por natureza; **nunca** coloque a *service_role* nem a *secret key* (`sb_secret_...`) no app nem a envie a ninguém: a função do servidor já recebe a dela automaticamente.
 
 ## 7. Cadastrar a equipe
 **Authentication → Users → Add user → Create new user**: e-mail e senha de cada pessoa, com **Auto Confirm User** marcado.

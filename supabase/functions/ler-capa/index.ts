@@ -114,8 +114,19 @@ async function lerComClaude(foto: Uint8Array, mediaType: string, modelo: string)
   return JSON.parse(m[0]);
 }
 
+// Chave de servidor injetada pelo Supabase: formato novo (SUPABASE_SECRET_KEYS, JSON) ou antigo.
+function chaveServidor(): string {
+  try {
+    const novas = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") ?? "{}");
+    const k = novas.default ?? Object.values(novas)[0];
+    if (typeof k === "string" && k) return k;
+  } catch { /* usa a antiga */ }
+  return Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+}
+const adminClient = () => createClient(Deno.env.get("SUPABASE_URL")!, chaveServidor(), { auth: { persistSession: false } });
+
 async function processar(id: string, modelo: string) {
-  const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  const admin = adminClient();
   const { data: p, error } = await admin.from("processos").select("id, foto_path, diarias, nota").eq("id", id).single();
   if (error || !p) return;
   try {
@@ -153,12 +164,11 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ erro: "Use POST." }, 405);
 
-  // Só usuários logados no app
-  const usuario = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
-    global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
-  });
-  const { data: { user } } = await usuario.auth.getUser();
-  if (!user) return json({ erro: "Faça login." }, 401);
+  // Só usuários logados no app: a própria função confere o login com o servidor de autenticação.
+  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+  if (!chaveServidor()) return json({ erro: "Chave de servidor do Supabase indisponível na função." }, 500);
+  const { data: { user } } = token ? await adminClient().auth.getUser(token) : { data: { user: null } };
+  if (!user) return json({ erro: "Faça login de novo." }, 401);
   if (!Deno.env.get("ANTHROPIC_API_KEY")) return json({ erro: "Chave da API do Claude não cadastrada no servidor." }, 500);
 
   let corpo: { id?: string; modelo?: string };

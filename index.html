@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Capas de Pagamento</title>
+<meta name="theme-color" content="#1F3A52">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Capas">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-180.png">
+<style>
+:root{
+  --pri:#1F3A52; --sec:#3D5A73; --bg:#F2F5F7; --card:#fff; --txt:#20303D; --mut:#6B7C8A;
+  --lin:#D8DEE3; --sub:#DCE4EA; --dest:#B3541E; --ok:#2E7D4F; --err:#A33A3A; --warn:#8A6D00;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%}
+body{font:16px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--txt);
+  padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+header{position:sticky;top:0;z-index:5;background:var(--pri);color:#fff;
+  padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;gap:10px}
+header h1{font-size:18px;margin:0;flex:1}
+header small{opacity:.8;font-size:12px}
+main{padding:12px 12px 24px;max-width:720px;margin:0 auto}
+.tab{display:none}.tab.on{display:block}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:6;background:#fff;border-top:1px solid var(--lin);
+  display:flex;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;border:0;background:none;padding:9px 4px 8px;font-size:11px;color:var(--mut);display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+nav button.on{color:var(--pri);font-weight:600}
+button,select,input,textarea{font:inherit;color:inherit}
+.btn{border:0;border-radius:10px;padding:12px 14px;background:var(--pri);color:#fff;font-weight:600;min-height:44px}
+.btn.sec{background:#fff;color:var(--pri);border:1px solid var(--lin)}
+.btn.per{background:#fff;color:var(--err);border:1px solid var(--lin)}
+.btn:disabled{opacity:.5}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row>.btn{flex:1}
+.card{background:var(--card);border-radius:12px;padding:12px;margin:10px 0;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.muted{color:var(--mut);font-size:13px}
+.grupo{margin:14px 0 0;border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.grupo>h3{margin:0;background:var(--sec);color:#fff;font-size:14px;padding:8px 12px}
+.item{display:flex;gap:10px;padding:10px 12px;border-bottom:1px solid var(--lin);align-items:flex-start}
+.item:active{background:#F7F9FA}
+.item .n{width:22px;color:var(--mut);font-size:13px;padding-top:2px;text-align:center;flex:none}
+.item .c{flex:1;min-width:0}
+.item .t{display:flex;justify-content:space-between;gap:8px;font-weight:600}
+.item .d{font-size:13px;color:var(--mut);margin-top:2px;overflow-wrap:anywhere}
+.item .d b{color:var(--dest)}
+.item img{width:44px;height:58px;object-fit:cover;border-radius:6px;flex:none;background:var(--sub)}
+.subt{display:flex;justify-content:space-between;background:var(--sub);padding:8px 12px;font-weight:700;font-size:14px;border-top:1px solid var(--pri)}
+.aviso{font-size:12.5px;color:var(--err);margin-top:4px}
+.aviso.am{color:var(--warn)}
+.pill{display:inline-block;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:600;color:#fff;white-space:nowrap}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;-webkit-overflow-scrolling:touch}
+.chips button{flex:none;border:1px solid var(--lin);background:#fff;border-radius:999px;padding:7px 12px;font-size:13px;min-height:36px}
+.chips button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+input[type=text],input[type=password],input[type=search],select,textarea{width:100%;border:1px solid var(--lin);border-radius:10px;padding:10px 12px;background:#fff;min-height:44px}
+label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+.st-sel{border:0;border-radius:999px;color:#fff;font-weight:600;font-size:13px;padding:6px 10px;min-height:34px;width:auto;max-width:100%}
+.spin{width:18px;height:18px;border:2.5px solid var(--lin);border-top-color:var(--pri);border-radius:50%;animation:r 1s linear infinite;display:inline-block;vertical-align:-3px}
+@keyframes r{to{transform:rotate(360deg)}}
+.sheet{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center}
+.sheet.on{display:flex}
+.sheet>div{background:var(--bg);width:100%;max-width:720px;max-height:92%;overflow:auto;border-radius:16px 16px 0 0;
+  padding:14px 14px calc(16px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch}
+.sheet h2{margin:0 0 6px;font-size:17px;display:flex;justify-content:space-between;align-items:center}
+.sheet h2 button{border:0;background:none;font-size:26px;line-height:1;padding:4px 8px;color:var(--mut)}
+.foto{width:100%;border-radius:10px;margin:6px 0;display:block}
+.check{display:flex;align-items:center;gap:8px;margin:10px 2px 0;font-size:14px}
+.check input{width:20px;height:20px}
+#toast{position:fixed;left:50%;bottom:calc(80px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#20303D;color:#fff;
+  padding:10px 14px;border-radius:10px;font-size:14px;z-index:30;display:none;max-width:90%;text-align:center}
+.vazio{text-align:center;color:var(--mut);padding:36px 12px}
+</style>
+</head>
+<body>
+<header><h1 id="hTitulo">Capas de Pagamento</h1><small id="hInfo"></small></header>
+
+<main>
+  <!-- ABA LISTA -->
+  <section class="tab on" id="tab-lista">
+    <div class="card">
+      <label style="margin-top:0">Título da lista</label>
+      <input type="text" id="titulo" value="Pagamento">
+      <div class="row" style="margin-top:10px">
+        <button class="btn" id="bAdd">＋ Adicionar capas (fotos)</button>
+      </div>
+      <label class="check"><input type="checkbox" id="chkDiarias"> Lançar estas fotos sob "Diárias"</label>
+      <div class="row" style="margin-top:10px">
+        <button class="btn sec" id="bPdf">Gerar PDF</button>
+        <button class="btn sec" id="bManual">Lançar manual</button>
+        <button class="btn per" id="bNova">Nova lista</button>
+      </div>
+      <input type="file" id="fotos" accept="image/*" multiple hidden>
+    </div>
+    <div id="resumo"></div>
+    <div id="lista"></div>
+  </section>
+
+  <!-- ABA STATUS -->
+  <section class="tab" id="tab-status">
+    <input type="search" id="busca" placeholder="Buscar credor, empenho, referente…">
+    <div class="chips" id="chips" style="margin-top:8px"></div>
+    <div id="statusLista"></div>
+  </section>
+
+  <!-- ABA AJUSTES -->
+  <section class="tab" id="tab-ajustes">
+    <div class="card">
+      <b>Leitura das capas</b>
+      <label>Como ler as fotos</label>
+      <select id="modo">
+        <option value="local">No aparelho (grátis, sem API)</option>
+        <option value="claude">Claude API (opcional, mais preciso)</option>
+      </select>
+      <p class="muted">No aparelho: a foto é lida no próprio iPhone, sem chave e sem custo. Funciona melhor com texto impresso; letra de mão sai com mais erros, então confira cada capa com a foto. Na primeira vez precisa de internet para baixar o leitor.</p>
+      <div id="boxApi" hidden>
+        <p class="muted">Cole a sua chave (console.anthropic.com → API Keys). Ela fica guardada só neste aparelho.</p>
+        <label>Chave da API</label>
+        <input type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off" autocapitalize="off" spellcheck="false">
+        <label>Modelo</label>
+        <select id="modelo">
+          <option value="claude-opus-5-5">Claude Opus 5.5 (mais preciso — padrão)</option>
+          <option value="claude-sonnet-5-5">Claude Sonnet 5.5 (mais barato)</option>
+          <option value="claude-haiku-5-5">Claude Haiku 5.5 (mais rápido e barato)</option>
+        </select>
+      </div>
+      <div class="row" style="margin-top:12px"><button class="btn" id="bSalvarCfg">Salvar</button></div>
+    </div>
+    <div class="card">
+      <b>Backup</b>
+      <p class="muted">Todos os processos e status ficam salvos neste aparelho. Exporte de vez em quando para não perder.</p>
+      <div class="row">
+        <button class="btn sec" id="bExport">Exportar backup</button>
+        <button class="btn sec" id="bImport">Importar backup</button>
+      </div>
+      <input type="file" id="fImport" accept="application/json,.json" hidden>
+    </div>
+    <div class="card">
+      <b>Instalar no iPhone</b>
+      <p class="muted">Abra este endereço no Safari → botão Compartilhar → "Adicionar à Tela de Início".</p>
+    </div>
+  </section>
+</main>
+
+<nav>
+  <button data-tab="lista" class="on"><svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>Lista</button>
+  <button data-tab="status"><svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>Status</button>
+  <button data-tab="ajustes"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.3l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2.3-1.3L14 3h-4l-.3 2.5a7 7 0 0 0-2.3 1.3l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .9.1 1.3l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2.3 1.3L10 21h4l.3-2.5a7 7 0 0 0 2.3-1.3l2.3 1 2-3.4-2-1.5c.1-.4.1-.9.1-1.3z"/></svg>Ajustes</button>
+</nav>
+
+<!-- EDITOR -->
+<div class="sheet" id="sheet"><div>
+  <h2><span id="edTit">Capa</span><button id="edX" aria-label="Fechar">×</button></h2>
+  <div id="edErro" class="aviso"></div>
+  <img id="edFoto" class="foto" alt="Foto da capa" hidden>
+  <label>Credor</label><input type="text" id="e_credor">
+  <label id="lblEmp">Empenho</label><input type="text" id="e_empenho">
+  <div class="g2">
+    <div><label>Valor (R$)</label><input type="text" inputmode="decimal" id="e_valor"></div>
+    <div><label>Valor Líquido (R$)</label><input type="text" inputmode="decimal" id="e_valor_liquido"></div>
+    <div><label>ISS (R$)</label><input type="text" inputmode="decimal" id="e_iss_valor"></div>
+    <div><label>IRRF (R$)</label><input type="text" inputmode="decimal" id="e_irrf_valor"></div>
+    <div><label>Mês</label><input type="text" id="e_mes"></div>
+    <div><label>Referente</label><input type="text" id="e_referente"></div>
+  </div>
+  <label>Status do processo</label><select id="e_status"></select>
+  <label>Observação</label><textarea id="e_nota" rows="2"></textarea>
+  <div id="edChecagem"></div>
+  <div class="row" style="margin-top:14px">
+    <button class="btn" id="edSalvar">Salvar</button>
+    <button class="btn sec" id="edReler" hidden>Ler de novo</button>
+    <button class="btn per" id="edExcluir">Excluir</button>
+  </div>
+</div></div>
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

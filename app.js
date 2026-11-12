@@ -14,13 +14,23 @@ const PROMPT = `Você lê fotos de capas de processo de pagamento da Prefeitura 
 
 Extraia: Credor, Empenho, Valor, ISS (R$), IRRF (R$), Valor Líquido, Mês, Referente.
 
+Como é o formulário (impresso, igual em todas as cores):
+- No alto: "Credor:", depois "Empenho:" (à esquerda) e "Doc. Caixa nº" (à direita), depois "Sub Empenho nº".
+- Abaixo de uma linha grossa, a coluna da esquerda tem os rótulos Valor, ISS, IRRF, INSS, Consignações, Contribuição Sindical, Outros Descontos e Valor Líquido, cada um com um espaço em branco e depois "R$ ______" onde vai o valor em reais. A coluna da direita tem Cheque, Recurso, Data e Mês.
+- Por fim "Referente:" com várias linhas.
+
 Regras:
+- O valor em reais é o que está escrito depois do "R$" daquela linha. O que está escrito no espaço entre o rótulo e o "R$" costuma ser o percentual (ex.: "0,24%", "4,8"): não é o valor.
+- Se alguém escreveu à mão o nome de outro imposto no espaço da linha (ex.: "IRRF:" escrito na linha do ISS), o valor daquela linha pertence ao imposto escrito à mão.
 - Use sempre o valor em R$, nunca o percentual. Se houver duas alíquotas no campo IRRF, as duas são IRRF: some em irrf_valor (não separe em ISS).
 - O formulário costuma estar inclinado na foto. Um número na altura entre "Valor" e "ISS" é o Valor, não ISS. Só preencha iss_valor quando o número estiver claramente na linha do ISS e o Valor também estiver preenchido.
 - Campo vazio = null. Referente vazio = "N/D". Empenho e mês vazios = "".
 - Padronize o referente: "Nº 147/2026-SEMED", "Contrato Nº 150/2026-SEMED", "Contrato Nº 149/2026-PNAE".
 - Leia os números com muito cuidado (4 x 9, 1 x 7, 3 x 8). Confira se Valor - ISS - IRRF = Valor Líquido para tirar dúvida de dígitos, mas transcreva o que está escrito na capa, mesmo que a conta não feche.
-- Números como número decimal (1234.56), sem separador de milhar.
+- Números como número decimal (1234.56), sem separador de milhar. Na capa a vírgula separa os centavos e o ponto separa os milhares.
+- Mês: copie como escrito no campo "Mês" (ex.: "09/2026"). Não use o campo "Data" no lugar do mês.
+- Se houver desconto em INSS, Consignações, Contribuição Sindical ou Outros Descontos, informe em "observacao" (ex.: "INSS R$ 120,00").
+- Anotações à mão fora dos campos (ex.: "Corrigir Empenho" no alto da folha) também vão em "observacao". Sem nada a anotar, "".
 - Em "duvida", escreva em uma frase curta qualquer dígito ou campo que ficou incerto; se não houver dúvida, "".
 - Se a imagem não for uma capa de processo, devolva credor "" e explique em "duvida".
 
@@ -37,9 +47,10 @@ const SCHEMA = {
     valor_liquido: { type: ['number', 'null'] },
     mes: { type: 'string' },
     referente: { type: 'string' },
+    observacao: { type: 'string' },
     duvida: { type: 'string' },
   },
-  required: ['credor', 'empenho', 'valor', 'iss_valor', 'irrf_valor', 'valor_liquido', 'mes', 'referente', 'duvida'],
+  required: ['credor', 'empenho', 'valor', 'iss_valor', 'irrf_valor', 'valor_liquido', 'mes', 'referente', 'observacao', 'duvida'],
   additionalProperties: false,
 };
 
@@ -71,8 +82,8 @@ const cfg = {
   set apiKey(v) { localStorage.setItem('apiKey', v); },
   get modelo() { return localStorage.getItem('modelo') || 'claude-opus-5-5'; },
   set modelo(v) { localStorage.setItem('modelo', v); },
-  get modo() { return localStorage.getItem('modo') || 'local'; },
-  set modo(v) { localStorage.setItem('modo', v); },
+  get modo() { return localStorage.getItem('modo2') || 'claude'; },
+  set modo(v) { localStorage.setItem('modo2', v); },
 };
 function abrirDB() {
   return new Promise((ok, no) => {
@@ -343,6 +354,8 @@ async function lerCapa(c) {
     c.mes = String(d.mes || '').trim();
     c.referente = String(d.referente || '').trim() || 'N/D';
     c.duvida = String(d.duvida || '').trim();
+    const obs = String(d.observacao || '').trim();
+    if (obs && !c.nota) c.nota = obs;
     delete c.img; // foto grande só é guardada enquanto a leitura não deu certo
   } catch (e) { c.erro = e.message || String(e); }
   c.lendo = false; salvar(); render();
@@ -542,7 +555,7 @@ $('edReler').onclick = () => {
 ['e_valor', 'e_iss_valor', 'e_irrf_valor', 'e_valor_liquido'].forEach(i => $(i).oninput = previaChecagem);
 $('e_credor').oninput = atualizarRotulos;
 
-const mostrarApi = () => $('boxApi').hidden = $('modo').value !== 'claude';
+const mostrarApi = () => { $('boxApi').hidden = $('modo').value !== 'claude'; $('txtLocal').hidden = $('modo').value === 'claude'; };
 $('modo').onchange = () => { cfg.modo = $('modo').value; mostrarApi(); };
 $('bSalvarCfg').onclick = () => { cfg.modo = $('modo').value; cfg.apiKey = $('apiKey').value.trim(); cfg.modelo = $('modelo').value; toast('Ajustes salvos.'); };
 $('bExport').onclick = () => {

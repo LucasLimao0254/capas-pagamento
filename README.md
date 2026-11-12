@@ -4,8 +4,8 @@ PWA para iPhone que lê fotos das capas de processo de pagamento da Prefeitura d
 
 ## Leitura das fotos
 
-- **No aparelho (padrão):** OCR com Tesseract.js, grátis e sem chave. Melhor com texto impresso; confira as capas escritas à mão.
-- **Claude API (opcional):** mais precisa com letra de mão; exige chave em Ajustes.
+- **Claude API (padrão):** lê a letra de mão; exige chave em Ajustes (console.anthropic.com). Custa de US$ 0,001 a US$ 0,03 por capa, conforme o modelo.
+- **No aparelho (opcional):** OCR com Tesseract.js, grátis e sem chave, mas não lê bem letra de mão.
 
 ## Uso
 

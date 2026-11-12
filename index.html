@@ -116,12 +116,12 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
       <b>Leitura das capas</b>
       <label>Como ler as fotos</label>
       <select id="modo">
-        <option value="local">No aparelho (grátis, sem API)</option>
-        <option value="claude">Claude API (opcional, mais preciso)</option>
+        <option value="claude">Claude API (recomendado — lê letra de mão)</option>
+        <option value="local">No aparelho (grátis, só texto impresso)</option>
       </select>
-      <p class="muted">No aparelho: a foto é lida no próprio iPhone, sem chave e sem custo. Funciona melhor com texto impresso; letra de mão sai com mais erros, então confira cada capa com a foto. Na primeira vez precisa de internet para baixar o leitor.</p>
+      <p class="muted" id="txtLocal">No aparelho: sem chave e sem custo, mas não lê bem letra de mão. Confira cada capa com a foto.</p>
       <div id="boxApi" hidden>
-        <p class="muted">Cole a sua chave (console.anthropic.com → API Keys). Ela fica guardada só neste aparelho.</p>
+        <p class="muted">Crie a chave em console.anthropic.com → API Keys (é preciso colocar créditos na conta). Cole abaixo; ela fica guardada só neste aparelho. Custo aproximado por capa: Opus 5.5 ≈ US$ 0,03 · Sonnet 5.5 ≈ US$ 0,01 · Haiku 5.5 ≈ US$ 0,001.</p>
         <label>Chave da API</label>
         <input type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off" autocapitalize="off" spellcheck="false">
         <label>Modelo</label>

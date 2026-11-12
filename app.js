@@ -31,7 +31,8 @@ Regras:
 - Mês: copie como escrito no campo "Mês" (ex.: "09/2026"). Não use o campo "Data" no lugar do mês.
 - Se houver desconto em INSS, Consignações, Contribuição Sindical ou Outros Descontos, informe em "observacao" (ex.: "INSS R$ 120,00").
 - Anotações à mão fora dos campos (ex.: "Corrigir Empenho" no alto da folha) também vão em "observacao". Sem nada a anotar, "".
-- Em "duvida", escreva em uma frase curta qualquer dígito ou campo que ficou incerto; se não houver dúvida, "".
+- "duvida" é só para incerteza real: um dígito ou palavra que você não conseguiu decidir entre duas leituras e que muda o resultado (ex.: "Valor: 1.098,50 ou 7.098,50"). Nesse caso diga as duas leituras possíveis e liste os campos em "duvida_campos".
+- NÃO escreva dúvida quando: a letra é difícil mas você conseguiu ler; a conta Valor - ISS - IRRF = Valor Líquido fecha com o que você leu (a conta confirma os números); o campo está em branco; ou só para dizer que conferiu. Na grande maioria das capas "duvida" deve ser "" e "duvida_campos" deve ser [].
 - Se a imagem não for uma capa de processo, devolva credor "" e explique em "duvida".
 
 Responda somente com o JSON.`;
@@ -49,8 +50,9 @@ const SCHEMA = {
     referente: { type: 'string' },
     observacao: { type: 'string' },
     duvida: { type: 'string' },
+    duvida_campos: { type: 'array', items: { type: 'string', enum: ['credor', 'empenho', 'valor', 'iss_valor', 'irrf_valor', 'valor_liquido', 'mes', 'referente'] } },
   },
-  required: ['credor', 'empenho', 'valor', 'iss_valor', 'irrf_valor', 'valor_liquido', 'mes', 'referente', 'observacao', 'duvida'],
+  required: ['credor', 'empenho', 'valor', 'iss_valor', 'irrf_valor', 'valor_liquido', 'mes', 'referente', 'observacao', 'duvida', 'duvida_campos'],
   additionalProperties: false,
 };
 
@@ -121,9 +123,11 @@ const ISS_OK = [2, 2.5, 3, 4, 5];
 const perto = (p, lista) => lista.some(x => Math.abs(p - x) <= 0.02);
 function checar(c) {
   const p = [];
+  let contaFecha = false;
   if (c.valor != null && c.valor_liquido != null) {
     const esp = r2(c.valor - (c.iss_valor || 0) - (c.irrf_valor || 0));
-    if (Math.abs(esp - c.valor_liquido) > 0.009) p.push({ t: `Líquido esperado ${fmt(esp)} × escrito ${fmt(c.valor_liquido)}`, grave: true });
+    contaFecha = Math.abs(esp - c.valor_liquido) <= 0.009;
+    if (!contaFecha) p.push({ t: `Líquido esperado ${fmt(esp)} × escrito ${fmt(c.valor_liquido)}`, grave: true });
   }
   if (c.valor) {
     if (c.irrf_valor != null) {
@@ -135,7 +139,13 @@ function checar(c) {
       if (!perto(pc, ISS_OK)) p.push({ t: `ISS = ${pc.toFixed(2).replace('.', ',')}% do valor (padrão 5%)` });
     }
   }
-  if (c.duvida) p.push({ t: 'Dúvida na leitura: ' + c.duvida });
+  // Dúvida só sobre valores some quando a conta Valor - ISS - IRRF = Líquido fecha:
+  // a própria conta confirma os números. Dúvida sobre nome, empenho etc. continua.
+  if (c.duvida) {
+    const campos = Array.isArray(c.duvida_campos) ? c.duvida_campos : null;
+    const soValores = campos ? campos.every(k => CAMPOS_NUM.includes(k)) : true;
+    if (!(contaFecha && soValores)) p.push({ t: 'Dúvida na leitura: ' + c.duvida, duvida: true });
+  }
   return p;
 }
 const chaveDup = c => [c.credor, c.empenho, c.valor, c.valor_liquido, c.referente].join('|').toLowerCase();
@@ -366,6 +376,8 @@ async function lerCapa(c) {
     c.mes = String(d.mes || '').trim();
     c.referente = String(d.referente || '').trim() || 'N/D';
     c.duvida = String(d.duvida || '').trim();
+    c.duvida_campos = Array.isArray(d.duvida_campos) ? d.duvida_campos : [];
+    if (c.diarias && c.duvida_campos.includes('credor')) c.duvida_campos = c.duvida_campos.map(k => k === 'credor' ? 'empenho' : k);
     const obs = String(d.observacao || '').trim();
     if (obs && !c.nota) c.nota = obs;
     delete c.img; // foto grande só é guardada enquanto a leitura não deu certo
@@ -441,7 +453,7 @@ function fecharEditor(descartarNovo) {
 function salvarEditor() {
   const c = state.capas.find(x => x.id === editId); if (!c) return;
   Object.assign(c, lerForm());
-  c.nota = $('e_nota').value.trim(); c.erro = ''; c.duvida = ''; c.local = false; delete c.diarias;
+  c.nota = $('e_nota').value.trim(); c.erro = ''; c.duvida = ''; c.duvida_campos = []; c.local = false; delete c.diarias;
   mudarStatus(c, $('e_status').value);
   editNovo = false; salvar(); fecharEditor(false);
 }

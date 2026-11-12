@@ -1,14 +1,18 @@
 # Capas de Pagamento
 
-PWA para iPhone que lê fotos das capas de processo de pagamento da Prefeitura de Maracaçumé, gera a lista em PDF agrupada por credor (com subtotais e conferência de valores) e acompanha o status de cada processo (Recebido, Pendente pagamento, Pendente certidão, Pago, Devolvido).
+PWA para iPhone usado pela equipe para lançar as capas de processo de pagamento da Prefeitura de Maracaçumé, acompanhar o status de cada processo e imprimir listas em PDF.
 
-## Leitura das fotos
+- **Processos:** cada pessoa fotografa as capas; as fotos são lidas no servidor pela API do Claude e os processos aparecem na hora para toda a equipe. Status (Recebido, Pendente pagamento, Pendente certidão, Pago, Devolvido) com histórico de quem mudou e quando.
+- **Lista (PDF):** marque os processos desejados e gere o PDF agrupado por credor, com subtotais.
+- **Avisos:** conta Valor − ISS − IRRF ≠ Valor Líquido, percentuais fora do padrão, dúvidas de leitura e duplicatas (mesma foto ou mesmo credor/valor/empenho/referente).
 
-- **Claude API (padrão):** lê a letra de mão; exige chave em Ajustes (console.anthropic.com). Custa de US$ 0,001 a US$ 0,03 por capa, conforme o modelo.
-- **No aparelho (opcional):** OCR com Tesseract.js, grátis e sem chave, mas não lê bem letra de mão.
+## Estrutura
+- `index.html`, `app.js`, `sw.js`, `manifest.webmanifest`: o app (publicado no GitHub Pages).
+- `config.js`: endereço e chave pública do Supabase.
+- `supabase/schema.sql`: banco, regras de acesso, histórico de status, fotos.
+- `supabase/functions/ler-capa/`: função que lê a foto com o Claude (a chave da API fica só no servidor).
 
-## Uso
+Para configurar o servidor, veja [CONFIGURAR.md](CONFIGURAR.md).
 
-Publique a pasta em qualquer endereço https (ex.: GitHub Pages), abra no Safari do iPhone → Compartilhar → "Adicionar à Tela de Início".
-
-Os dados ficam salvos só no aparelho; use Ajustes → Exportar backup.
+## Instalar no iPhone
+Abra o endereço no Safari → Compartilhar → "Adicionar à Tela de Início".

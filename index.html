@@ -22,10 +22,13 @@
 html,body{margin:0;height:100%}
 body{font:16px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--txt);
   padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+body.semnav{padding-bottom:0}
 header{position:sticky;top:0;z-index:5;background:var(--pri);color:#fff;
   padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;gap:10px}
 header h1{font-size:18px;margin:0;flex:1}
-header small{opacity:.8;font-size:12px}
+header small{opacity:.85;font-size:12px;display:flex;align-items:center;gap:6px}
+.ponto{width:8px;height:8px;border-radius:50%;background:#7BC79A;display:inline-block}
+.ponto.off{background:#E0A0A0}
 main{padding:12px 12px 24px;max-width:720px;margin:0 auto}
 .tab{display:none}.tab.on{display:block}
 nav{position:fixed;left:0;right:0;bottom:0;z-index:6;background:#fff;border-top:1px solid var(--lin);
@@ -42,106 +45,140 @@ button,select,input,textarea{font:inherit;color:inherit}
 .row>.btn{flex:1}
 .card{background:var(--card);border-radius:12px;padding:12px;margin:10px 0;box-shadow:0 1px 2px rgba(0,0,0,.06)}
 .muted{color:var(--mut);font-size:13px}
-.grupo{margin:14px 0 0;border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.06)}
-.grupo>h3{margin:0;background:var(--sec);color:#fff;font-size:14px;padding:8px 12px}
-.item{display:flex;gap:10px;padding:10px 12px;border-bottom:1px solid var(--lin);align-items:flex-start}
-.item:active{background:#F7F9FA}
-.item .n{width:22px;color:var(--mut);font-size:13px;padding-top:2px;text-align:center;flex:none}
-.item .c{flex:1;min-width:0}
-.item .t{display:flex;justify-content:space-between;gap:8px;font-weight:600}
-.item .d{font-size:13px;color:var(--mut);margin-top:2px;overflow-wrap:anywhere}
-.item .d b{color:var(--dest)}
-.item img{width:44px;height:58px;object-fit:cover;border-radius:6px;flex:none;background:var(--sub)}
-.del{flex:none;border:0;background:none;color:var(--err);width:40px;height:40px;margin:-6px -8px -6px 0;border-radius:8px;display:flex;align-items:center;justify-content:center}
-.del:active{background:#F6E3E3}
-.del svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.subt{display:flex;justify-content:space-between;background:var(--sub);padding:8px 12px;font-weight:700;font-size:14px;border-top:1px solid var(--pri)}
+.proc{background:#fff;border-radius:12px;margin:10px 0;box-shadow:0 1px 2px rgba(0,0,0,.06);padding:10px 12px}
+.proc .topo{display:flex;gap:8px;align-items:flex-start}
+.proc .c{flex:1;min-width:0}
+.t{display:flex;justify-content:space-between;gap:8px;font-weight:600}
+.t span:first-child{overflow-wrap:anywhere}
+.t span:last-child{white-space:nowrap}
+.d{font-size:13px;color:var(--mut);margin-top:2px;overflow-wrap:anywhere}
+.d b{color:var(--dest)}
+.rodape{display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:8px}
 .aviso{font-size:12.5px;color:var(--err);margin-top:4px}
 .aviso.am{color:var(--warn)}
 .pill{display:inline-block;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:600;color:#fff;white-space:nowrap}
 .chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;-webkit-overflow-scrolling:touch}
 .chips button{flex:none;border:1px solid var(--lin);background:#fff;border-radius:999px;padding:7px 12px;font-size:13px;min-height:36px}
 .chips button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
-input[type=text],input[type=password],input[type=search],select,textarea{width:100%;border:1px solid var(--lin);border-radius:10px;padding:10px 12px;background:#fff;min-height:44px}
+input[type=text],input[type=email],input[type=password],input[type=search],select,textarea{width:100%;border:1px solid var(--lin);border-radius:10px;padding:10px 12px;background:#fff;min-height:44px}
 label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
-.st-sel{border:0;border-radius:999px;color:#fff;font-weight:600;font-size:13px;padding:6px 10px;min-height:34px;width:auto;max-width:100%}
-.spin{width:18px;height:18px;border:2.5px solid var(--lin);border-top-color:var(--pri);border-radius:50%;animation:r 1s linear infinite;display:inline-block;vertical-align:-3px}
+.st-sel{border:0;border-radius:999px;color:#fff;font-weight:600;font-size:13px;padding:6px 10px;min-height:34px;width:auto;max-width:60%}
+.spin{width:16px;height:16px;border:2.5px solid var(--lin);border-top-color:var(--pri);border-radius:50%;animation:r 1s linear infinite;display:inline-block;vertical-align:-3px}
 @keyframes r{to{transform:rotate(360deg)}}
+.del{flex:none;border:0;background:none;color:var(--err);width:40px;height:40px;margin:-6px -8px -6px 0;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.del:active{background:#F6E3E3}
+.del svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.sel{display:flex;gap:10px;align-items:flex-start;background:#fff;border-radius:12px;margin:8px 0;padding:10px 12px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.sel input{width:22px;height:22px;margin:2px 0 0;flex:none;accent-color:var(--pri)}
+.sel.marcado{outline:2px solid var(--pri)}
+.barra{position:fixed;left:0;right:0;bottom:calc(58px + env(safe-area-inset-bottom));z-index:4;padding:8px 12px;
+  background:rgba(242,245,247,.96);border-top:1px solid var(--lin);display:flex;gap:10px;align-items:center;max-width:720px;margin:0 auto}
+.barra .info{flex:1;font-size:14px}
+#tab-lista{padding-bottom:70px}
 .sheet{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center}
 .sheet.on{display:flex}
 .sheet>div{background:var(--bg);width:100%;max-width:720px;max-height:92%;overflow:auto;border-radius:16px 16px 0 0;
   padding:14px 14px calc(16px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch}
 .sheet h2{margin:0 0 6px;font-size:17px;display:flex;justify-content:space-between;align-items:center}
 .sheet h2 button{border:0;background:none;font-size:26px;line-height:1;padding:4px 8px;color:var(--mut)}
-.foto{width:100%;border-radius:10px;margin:6px 0;display:block}
+.foto{width:100%;border-radius:10px;margin:6px 0;display:block;background:var(--sub);min-height:60px}
 .check{display:flex;align-items:center;gap:8px;margin:10px 2px 0;font-size:14px}
 .check input{width:20px;height:20px}
-#toast{position:fixed;left:50%;bottom:calc(80px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#20303D;color:#fff;
+.hist{font-size:13px;color:var(--mut);margin:4px 0 0;padding-left:18px}
+#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#20303D;color:#fff;
   padding:10px 14px;border-radius:10px;font-size:14px;z-index:30;display:none;max-width:90%;text-align:center}
 .vazio{text-align:center;color:var(--mut);padding:36px 12px}
+.centro{max-width:420px;margin:8vh auto 0}
 </style>
 </head>
-<body>
+<body class="semnav">
 <header><h1 id="hTitulo">Capas de Pagamento</h1><small id="hInfo"></small></header>
 
 <main>
-  <!-- ABA LISTA -->
-  <section class="tab on" id="tab-lista">
+  <!-- SEM CONFIGURAÇÃO -->
+  <section id="telaConfig" class="centro" hidden>
+    <div class="card"><b>App ainda não configurado</b>
+      <p class="muted">Falta preencher o endereço do servidor (Supabase) no arquivo <code>config.js</code>.</p></div>
+  </section>
+
+  <!-- LOGIN -->
+  <section id="telaLogin" class="centro" hidden>
+    <div class="card">
+      <b>Entrar</b>
+      <form id="fLogin">
+        <label>E-mail</label><input type="email" id="lEmail" autocomplete="username" autocapitalize="off" required>
+        <label>Senha</label><input type="password" id="lSenha" autocomplete="current-password" required>
+        <div id="lErro" class="aviso"></div>
+        <div class="row" style="margin-top:12px"><button class="btn" id="bEntrar">Entrar</button></div>
+      </form>
+      <p class="muted">Não tem acesso ou esqueceu a senha? Fale com quem administra o app.</p>
+    </div>
+  </section>
+
+  <!-- PROCESSOS -->
+  <section class="tab" id="tab-processos">
+    <div class="card">
+      <div class="row"><button class="btn" id="bAdd">＋ Adicionar capas (fotos)</button></div>
+      <label class="check"><input type="checkbox" id="chkDiarias"> Lançar estas fotos sob "Diárias"</label>
+      <div class="row" style="margin-top:10px"><button class="btn sec" id="bManual">Lançar manual</button></div>
+      <input type="file" id="fotos" accept="image/*" multiple hidden>
+    </div>
+    <input type="search" id="pBusca" placeholder="Buscar credor, empenho, referente…">
+    <div class="chips" id="pChips" style="margin-top:8px"></div>
+    <div id="pResumo"></div>
+    <div id="pLista"></div>
+  </section>
+
+  <!-- LISTA (PDF) -->
+  <section class="tab" id="tab-lista">
     <div class="card">
       <label style="margin-top:0">Título da lista</label>
       <input type="text" id="titulo" value="Pagamento">
-      <div class="row" style="margin-top:10px">
-        <button class="btn" id="bAdd">＋ Adicionar capas (fotos)</button>
-      </div>
-      <label class="check"><input type="checkbox" id="chkDiarias"> Lançar estas fotos sob "Diárias"</label>
-      <div class="row" style="margin-top:10px">
-        <button class="btn sec" id="bPdf">Gerar PDF</button>
-        <button class="btn sec" id="bManual">Lançar manual</button>
-        <button class="btn per" id="bNova">Nova lista</button>
-      </div>
-      <input type="file" id="fotos" accept="image/*" multiple hidden>
+      <p class="muted" style="margin-bottom:0">Marque os processos que entram na lista e toque em Gerar PDF.</p>
     </div>
-    <div id="resumo"></div>
-    <div id="lista"></div>
+    <input type="search" id="lBusca" placeholder="Buscar credor, empenho, referente…">
+    <div class="chips" id="lChips" style="margin-top:8px"></div>
+    <div class="row" style="margin-bottom:4px">
+      <button class="btn sec" id="bSelVis">Marcar todos visíveis</button>
+      <button class="btn sec" id="bLimpar">Limpar seleção</button>
+    </div>
+    <div id="lLista"></div>
+    <div class="barra" id="barra" hidden>
+      <div class="info" id="barraInfo"></div>
+      <button class="btn" id="bPdf">Gerar PDF</button>
+    </div>
   </section>
 
-  <!-- ABA STATUS -->
-  <section class="tab" id="tab-status">
-    <input type="search" id="busca" placeholder="Buscar credor, empenho, referente…">
-    <div class="chips" id="chips" style="margin-top:8px"></div>
-    <div id="statusLista"></div>
-  </section>
-
-  <!-- ABA AJUSTES -->
+  <!-- AJUSTES -->
   <section class="tab" id="tab-ajustes">
     <div class="card">
-      <b>Leitura das capas</b>
-      <label>Como ler as fotos</label>
-      <select id="modo">
-        <option value="claude">Claude API (recomendado — lê letra de mão)</option>
-        <option value="local">No aparelho (grátis, só texto impresso)</option>
-      </select>
-      <p class="muted" id="txtLocal">No aparelho: sem chave e sem custo, mas não lê bem letra de mão. Confira cada capa com a foto.</p>
-      <div id="boxApi" hidden>
-        <p class="muted">Crie a chave em console.anthropic.com → API Keys (é preciso colocar créditos na conta). Cole abaixo; ela fica guardada só neste aparelho. Custo aproximado por capa: Opus 5.5 ≈ US$ 0,03 · Sonnet 5.5 ≈ US$ 0,01 · Haiku 5.5 ≈ US$ 0,001.</p>
-        <label>Chave da API</label>
-        <input type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off" autocapitalize="off" spellcheck="false">
-        <label>Modelo</label>
-        <select id="modelo">
-          <option value="claude-opus-5-5">Claude Opus 5.5 (mais preciso — padrão)</option>
-          <option value="claude-sonnet-5-5">Claude Sonnet 5.5 (mais barato)</option>
-          <option value="claude-haiku-5-5">Claude Haiku 5.5 (mais rápido e barato)</option>
-        </select>
-      </div>
-      <div class="row" style="margin-top:12px"><button class="btn" id="bSalvarCfg">Salvar</button></div>
+      <b>Sua conta</b>
+      <p class="muted" id="aEmail"></p>
+      <label>Seu nome (aparece em quem lançou e quem mudou o status)</label>
+      <input type="text" id="aNome" autocomplete="name">
+      <div class="row" style="margin-top:10px"><button class="btn" id="bSalvarNome">Salvar nome</button>
+        <button class="btn per" id="bSair">Sair</button></div>
     </div>
     <div class="card">
-      <b>Backup</b>
-      <p class="muted">Todos os processos e status ficam salvos neste aparelho. Exporte de vez em quando para não perder.</p>
+      <b>Leitura das capas</b>
+      <p class="muted">As fotos são lidas no servidor pela API do Claude; a chave fica guardada lá, não no celular.</p>
+      <label>Modelo</label>
+      <select id="modelo">
+        <option value="claude-opus-5-5">Claude Opus 5.5 (mais preciso — padrão) ≈ US$ 0,03/capa</option>
+        <option value="claude-sonnet-5-5">Claude Sonnet 5.5 ≈ US$ 0,01/capa</option>
+        <option value="claude-haiku-5-5">Claude Haiku 5.5 ≈ US$ 0,001/capa</option>
+      </select>
+    </div>
+    <div class="card">
+      <b>Dados</b>
+      <p class="muted">Os processos ficam no servidor e são os mesmos para toda a equipe.</p>
       <div class="row">
-        <button class="btn sec" id="bExport">Exportar backup</button>
-        <button class="btn sec" id="bImport">Importar backup</button>
+        <button class="btn sec" id="bExport">Exportar planilha (CSV)</button>
+        <button class="btn sec" id="bImport">Importar backup antigo</button>
+      </div>
+      <div class="row" style="margin-top:8px" id="boxLocal" hidden>
+        <button class="btn sec" id="bLocal"></button>
       </div>
       <input type="file" id="fImport" accept="application/json,.json" hidden>
     </div>
@@ -152,15 +189,15 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
   </section>
 </main>
 
-<nav>
-  <button data-tab="lista" class="on"><svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>Lista</button>
-  <button data-tab="status"><svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>Status</button>
+<nav id="nav" hidden>
+  <button data-tab="processos" class="on"><svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>Processos</button>
+  <button data-tab="lista"><svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6z"/></svg>Lista (PDF)</button>
   <button data-tab="ajustes"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.3l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2.3-1.3L14 3h-4l-.3 2.5a7 7 0 0 0-2.3 1.3l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .9.1 1.3l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2.3 1.3L10 21h4l.3-2.5a7 7 0 0 0 2.3-1.3l2.3 1 2-3.4-2-1.5c.1-.4.1-.9.1-1.3z"/></svg>Ajustes</button>
 </nav>
 
 <!-- EDITOR -->
 <div class="sheet" id="sheet"><div>
-  <h2><span id="edTit">Capa</span><button id="edX" aria-label="Fechar">×</button></h2>
+  <h2><span id="edTit">Processo</span><button id="edX" aria-label="Fechar">×</button></h2>
   <div id="edErro" class="aviso"></div>
   <img id="edFoto" class="foto" alt="Foto da capa" hidden>
   <label>Credor</label><input type="text" id="e_credor">
@@ -181,12 +218,14 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
     <button class="btn sec" id="edReler" hidden>Ler de novo</button>
     <button class="btn per" id="edExcluir">Excluir</button>
   </div>
+  <div id="edInfo" class="muted" style="margin-top:12px"></div>
 </div></div>
 <div id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<script src="config.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

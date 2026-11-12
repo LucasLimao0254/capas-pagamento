@@ -10,60 +10,18 @@ const STATUS = [
 const stInfo = id => STATUS.find(s => s.id === id) || STATUS[0];
 const CAMPOS_NUM = ['valor', 'iss_valor', 'irrf_valor', 'valor_liquido'];
 
-const PROMPT = `Você lê fotos de capas de processo de pagamento da Prefeitura de Maracaçumé (folha amarela FUNDEB/SEMED, azul Saúde/FMUS, rosa Assistência Social/FMAS-SEMAS, branca Administração Municipal). O formulário é preenchido à mão.
-
-Extraia: Credor, Empenho, Valor, ISS (R$), IRRF (R$), Valor Líquido, Mês, Referente.
-
-Como é o formulário (impresso, igual em todas as cores):
-- No alto: "Credor:", depois "Empenho:" (à esquerda) e "Doc. Caixa nº" (à direita), depois "Sub Empenho nº".
-- Abaixo de uma linha grossa, a coluna da esquerda tem os rótulos Valor, ISS, IRRF, INSS, Consignações, Contribuição Sindical, Outros Descontos e Valor Líquido, cada um com um espaço em branco e depois "R$ ______" onde vai o valor em reais. A coluna da direita tem Cheque, Recurso, Data e Mês.
-- Por fim "Referente:" com várias linhas.
-
-Regras:
-- O valor em reais é o que está escrito depois do "R$" daquela linha. O que está escrito no espaço entre o rótulo e o "R$" costuma ser o percentual (ex.: "0,24%", "4,8"): não é o valor.
-- Se alguém escreveu à mão o nome de outro imposto no espaço da linha (ex.: "IRRF:" escrito na linha do ISS), o valor daquela linha pertence ao imposto escrito à mão.
-- Use sempre o valor em R$, nunca o percentual. Se houver duas alíquotas no campo IRRF, as duas são IRRF: some em irrf_valor (não separe em ISS).
-- O formulário costuma estar inclinado na foto. Um número na altura entre "Valor" e "ISS" é o Valor, não ISS. Só preencha iss_valor quando o número estiver claramente na linha do ISS e o Valor também estiver preenchido.
-- Campo vazio = null. Referente vazio = "N/D". Empenho e mês vazios = "".
-- Padronize o referente: "Nº 147/2026-SEMED", "Contrato Nº 150/2026-SEMED", "Contrato Nº 149/2026-PNAE".
-- Leia os números com muito cuidado (4 x 9, 1 x 7, 3 x 8). Confira se Valor - ISS - IRRF = Valor Líquido para tirar dúvida de dígitos, mas transcreva o que está escrito na capa, mesmo que a conta não feche.
-- Números como número decimal (1234.56), sem separador de milhar. Na capa a vírgula separa os centavos e o ponto separa os milhares.
-- Mês: copie como escrito no campo "Mês" (ex.: "09/2026"). Não use o campo "Data" no lugar do mês.
-- Se houver desconto em INSS, Consignações, Contribuição Sindical ou Outros Descontos, informe em "observacao" (ex.: "INSS R$ 120,00").
-- Anotações à mão fora dos campos (ex.: "Corrigir Empenho" no alto da folha) também vão em "observacao". Sem nada a anotar, "".
-- "duvida" é só para incerteza real: um dígito ou palavra que você não conseguiu decidir entre duas leituras e que muda o resultado (ex.: "Valor: 1.098,50 ou 7.098,50"). Nesse caso diga as duas leituras possíveis e liste os campos em "duvida_campos".
-- NÃO escreva dúvida quando: a letra é difícil mas você conseguiu ler; a conta Valor - ISS - IRRF = Valor Líquido fecha com o que você leu (a conta confirma os números); o campo está em branco; ou só para dizer que conferiu. Na grande maioria das capas "duvida" deve ser "" e "duvida_campos" deve ser [].
-- Se a imagem não for uma capa de processo, devolva credor "" e explique em "duvida".
-
-Responda somente com o JSON.`;
-
-const SCHEMA = {
-  type: 'object',
-  properties: {
-    credor: { type: 'string' },
-    empenho: { type: 'string' },
-    valor: { type: ['number', 'null'] },
-    iss_valor: { type: ['number', 'null'] },
-    irrf_valor: { type: ['number', 'null'] },
-    valor_liquido: { type: ['number', 'null'] },
-    mes: { type: 'string' },
-    referente: { type: 'string' },
-    observacao: { type: 'string' },
-    duvida: { type: 'string' },
-    duvida_campos: { type: 'array', items: { type: 'string', enum: ['credor', 'empenho', 'valor', 'iss_valor', 'irrf_valor', 'valor_liquido', 'mes', 'referente'] } },
-  },
-  required: ['credor', 'empenho', 'valor', 'iss_valor', 'irrf_valor', 'valor_liquido', 'mes', 'referente', 'observacao', 'duvida', 'duvida_campos'],
-  additionalProperties: false,
-};
-
 /* ===================== Utilidades ===================== */
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const r2 = n => Math.round(n * 100) / 100;
-const fmt = v => v == null ? '-' : 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtIn = v => v == null ? '' : v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const n2 = v => v == null || v === '' ? null : r2(Number(v)); // numeric do Postgres chega como texto/número
+const fmt = v => v == null ? '-' : 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtIn = v => v == null ? '' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const hoje = () => new Date().toLocaleDateString('pt-BR');
-const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const dataHora = s => s ? new Date(s).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+const dataCurta = s => s ? new Date(s).toLocaleDateString('pt-BR') : '';
+const montante = p => p.valor != null ? p.valor : (p.valor_liquido || 0);
+const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\b(ltda|me|epp|eireli|s\/?a)\b/g, '').replace(/[^a-z0-9]/g, '');
 function parseNum(s) {
   s = String(s ?? '').replace(/[R$\s]/g, '');
   if (!s) return null;
@@ -72,49 +30,54 @@ function parseNum(s) {
   return Number.isFinite(n) ? r2(n) : null;
 }
 let toastT;
-function toast(msg, ms = 2600) {
+function toast(msg, ms = 2800) {
   const t = $('toast'); t.textContent = msg; t.style.display = 'block';
   clearTimeout(toastT); toastT = setTimeout(() => t.style.display = 'none', ms);
 }
-
-/* ===================== Armazenamento (IndexedDB) ===================== */
-let state = { capas: [], titulo: 'Pagamento' };
-const cfg = {
-  get apiKey() { return localStorage.getItem('apiKey') || ''; },
-  set apiKey(v) { localStorage.setItem('apiKey', v); },
-  get modelo() { return localStorage.getItem('modelo') || 'claude-opus-5-5'; },
-  set modelo(v) { localStorage.setItem('modelo', v); },
-  get modo() { return localStorage.getItem('modo2') || 'claude'; },
-  set modo(v) { localStorage.setItem('modo2', v); },
+const ls = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { } },
 };
-function abrirDB() {
-  return new Promise((ok, no) => {
-    const r = indexedDB.open('capas-db', 1);
-    r.onupgradeneeded = () => r.result.createObjectStore('kv');
-    r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error);
-  });
+
+/* ===================== Servidor (Supabase) ===================== */
+const CFG = window.CAPAS_CONFIG || {};
+let sb = null, usuario = null;
+let processos = new Map(); // id -> processo
+let canal = null;
+
+function normalizar(p) {
+  const o = { ...p };
+  CAMPOS_NUM.forEach(k => o[k] = n2(p[k]));
+  o.duvida_campos = Array.isArray(p.duvida_campos) ? p.duvida_campos : [];
+  return o;
 }
-async function carregar() {
-  try {
-    const db = await abrirDB();
-    const v = await new Promise((ok, no) => {
-      const q = db.transaction('kv').objectStore('kv').get('state');
-      q.onsuccess = () => ok(q.result); q.onerror = () => no(q.error);
-    });
-    if (v && Array.isArray(v.capas)) state = v;
-  } catch (e) { console.error(e); }
-  // leituras interrompidas viram erro para poder tentar de novo
-  state.capas.forEach(c => { if (c.lendo) { c.lendo = false; c.erro = 'Leitura interrompida.'; } });
+async function carregarTudo() {
+  const todos = [];
+  for (let de = 0; ; de += 1000) {
+    const { data, error } = await sb.from('processos').select('*').order('criado_em', { ascending: false }).range(de, de + 999);
+    if (error) throw error;
+    todos.push(...data);
+    if (data.length < 1000) break;
+  }
+  processos = new Map(todos.map(p => [p.id, normalizar(p)]));
+  podarSelecao(); render();
 }
-let salvarT;
-function salvar() {
-  clearTimeout(salvarT);
-  salvarT = setTimeout(async () => {
-    try {
-      const db = await abrirDB();
-      db.transaction('kv', 'readwrite').objectStore('kv').put(state, 'state');
-    } catch (e) { console.error(e); toast('Não foi possível salvar no aparelho.'); }
-  }, 150);
+function assinarTempoReal() {
+  if (canal) sb.removeChannel(canal);
+  canal = sb.channel('processos')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'processos' }, ev => {
+      if (ev.eventType === 'DELETE') processos.delete(ev.old.id);
+      else processos.set(ev.new.id, normalizar(ev.new));
+      podarSelecao(); render();
+      if (editId && ev.eventType === 'DELETE' && ev.old.id === editId) { fecharEditor(); toast('Este processo foi excluído por outra pessoa.'); }
+    })
+    .subscribe(st => { $('hInfo').innerHTML = `<span class="ponto ${st === 'SUBSCRIBED' ? '' : 'off'}"></span>${st === 'SUBSCRIBED' ? 'ao vivo' : 'reconectando'}`; });
+}
+async function atualizar(id, campos) {
+  const { data, error } = await sb.from('processos').update(campos).eq('id', id).select().single();
+  if (error) throw error;
+  processos.set(id, normalizar(data)); render();
+  return data;
 }
 
 /* ===================== Checagens ===================== */
@@ -139,111 +102,106 @@ function checar(c) {
       if (!perto(pc, ISS_OK)) p.push({ t: `ISS = ${pc.toFixed(2).replace('.', ',')}% do valor (padrão 5%)` });
     }
   }
-  // Dúvida só sobre valores some quando a conta Valor - ISS - IRRF = Líquido fecha:
-  // a própria conta confirma os números. Dúvida sobre nome, empenho etc. continua.
+  // Dúvida só sobre valores some quando a conta fecha: a própria conta confirma os números.
   if (c.duvida) {
-    const campos = Array.isArray(c.duvida_campos) ? c.duvida_campos : null;
+    const campos = Array.isArray(c.duvida_campos) && c.duvida_campos.length ? c.duvida_campos : null;
     const soValores = campos ? campos.every(k => CAMPOS_NUM.includes(k)) : true;
-    if (!(contaFecha && soValores)) p.push({ t: 'Dúvida na leitura: ' + c.duvida, duvida: true });
+    if (!(contaFecha && soValores)) p.push({ t: 'Dúvida na leitura: ' + c.duvida });
   }
   return p;
 }
-const chaveDup = c => [c.credor, c.empenho, c.valor, c.valor_liquido, c.referente].join('|').toLowerCase();
-function duplicadas(lista) {
-  const m = {}; lista.forEach(c => { if (!c.lendo && !c.erro) (m[chaveDup(c)] ||= []).push(c.id); });
-  const s = new Set(); Object.values(m).forEach(ids => { if (ids.length > 1) ids.forEach(i => s.add(i)); });
-  return s;
-}
-
-/* ===================== Agrupamento ===================== */
-const daLista = () => state.capas.filter(c => c.naLista);
-function grupos(lista) {
-  const g = {};
-  lista.forEach(c => (g[c.credor || '(sem credor)'] ||= []).push(c));
-  return Object.keys(g).sort((a, b) => a.localeCompare(b, 'pt-BR')).map(k => ({
-    credor: k, itens: g[k],
-    total: r2(g[k].reduce((s, c) => s + (c.valor != null ? c.valor : (c.valor_liquido || 0)), 0)),
-  }));
-}
-
-/* ===================== Excluir ===================== */
-const BTN_DEL = id => `<button class="del" data-del="${id}" aria-label="Excluir"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg></button>`;
-function excluirCapa(id) {
-  const c = state.capas.find(x => x.id === id); if (!c) return;
-  const nome = c.credor || 'esta capa';
-  if (!confirm(`Excluir ${nome}${c.valor != null || c.valor_liquido != null ? ' (' + fmt(c.valor != null ? c.valor : c.valor_liquido) + ')' : ''}?\nSai da lista e do Status.`)) return;
-  const i = fila.indexOf(c); if (i >= 0) fila.splice(i, 1);
-  state.capas = state.capas.filter(x => x.id !== id);
-  salvar(); render(); toast('Capa excluída.');
-}
-
-/* ===================== Renderização: Lista ===================== */
-function renderLista() {
-  const lista = daLista();
-  const dups = duplicadas(lista);
-  const lendo = lista.filter(c => c.lendo).length;
-  $('hInfo').textContent = lista.length ? `${lista.length} capa${lista.length > 1 ? 's' : ''}` : '';
-  let html = '', n = 1, avisos = [];
-  for (const g of grupos(lista)) {
-    html += `<div class="grupo"><h3>${esc(g.credor)}</h3>`;
-    for (const c of g.itens) {
-      const num = n++;
-      const pr = c.lendo || c.erro ? [] : checar(c);
-      if (dups.has(c.id)) pr.push({ t: 'Possível duplicata — confirme se são duas capas', grave: true });
-      pr.forEach(x => avisos.push(`Nº ${num} (${c.credor}): ${x.t}`));
-      const st = stInfo(c.status);
-      html += `<div class="item" data-id="${c.id}">
-        <div class="n">${num}</div>
-        ${c.thumb ? `<img src="${c.thumb}" alt="">` : ''}
-        <div class="c">${c.lendo ? `<div class="t"><span><span class="spin"></span> Lendo capa…</span></div>`
-          : c.erro ? `<div class="t"><span>Não foi possível ler</span></div><div class="aviso">${esc(c.erro)} Toque para tentar de novo ou preencher.</div>`
-          : `<div class="t"><span>${esc(c.empenho || '-')}</span><span>${fmt(c.valor != null ? c.valor : c.valor_liquido)}</span></div>
-            <div class="d">Líq. ${fmt(c.valor_liquido)} · ISS ${c.iss_valor != null ? `<b>${fmt(c.iss_valor)}</b>` : '-'} · IRRF ${c.irrf_valor != null ? `<b>${fmt(c.irrf_valor)}</b>` : '-'}</div>
-            <div class="d">${esc(c.referente || 'N/D')}${c.mes ? ' · ' + esc(c.mes) : ''} · <span class="pill" style="background:${st.cor}">${st.label}</span></div>
-            ${pr.map(x => `<div class="aviso ${x.grave ? '' : 'am'}">⚠ ${esc(x.t)}</div>`).join('')}
-            ${c.local ? `<div class="aviso am">Lido no aparelho — toque e confira com a foto</div>` : ''}`}
-        </div>${BTN_DEL(c.id)}</div>`;
-    }
-    html += `<div class="subt"><span>SUBTOTAL</span><span>${fmt(g.total)}</span></div></div>`;
+// Duplicatas: mesma foto, ou mesmo credor + mesmo valor + mesmo empenho/referente.
+function duplicatasDe(p) {
+  if (p.leitura === 'lendo') return [];
+  const out = [];
+  for (const q of processos.values()) {
+    if (q.id === p.id || q.leitura === 'lendo') continue;
+    if (p.foto_hash && q.foto_hash === p.foto_hash) { out.push({ q, foto: true }); continue; }
+    if (p.leitura !== 'ok' || q.leitura !== 'ok') continue;
+    if (!norm(p.credor) || norm(p.credor) !== norm(q.credor)) continue;
+    if (montante(p) !== montante(q) || !montante(p)) continue;
+    const mesmoEmp = (p.empenho || '') === (q.empenho || '');
+    const mesmaRef = norm(p.referente) === norm(q.referente);
+    if (p.credor === 'Diárias' ? mesmoEmp : (mesmoEmp && mesmaRef)) out.push({ q, foto: false });
   }
-  $('lista').innerHTML = html || `<div class="vazio">Nenhuma capa na lista.<br>Toque em <b>Adicionar capas</b> e escolha ou tire as fotos.</div>`;
-  const total = r2(lista.reduce((s, c) => s + (c.valor != null ? c.valor : (c.valor_liquido || 0)), 0));
-  $('resumo').innerHTML = !lista.length ? '' : `<div class="card">
-    <b>${lista.length} capa${lista.length > 1 ? 's' : ''}</b> · total ${fmt(total)}${lendo ? ` · <span class="spin"></span> lendo ${lendo}…` : ''}
-    ${avisos.length ? `<div style="margin-top:6px"><b style="color:var(--err)">Conferir (${avisos.length}):</b>${avisos.map(a => `<div class="aviso">${esc(a)}</div>`).join('')}</div>`
-      : (lendo ? '' : `<div class="muted" style="margin-top:4px">Valores conferidos: sem divergências.</div>`)}
-  </div>`;
+  return out;
+}
+const textoDup = d => `${d.foto ? 'Mesma foto já enviada' : 'Possível duplicata'}: lançado por ${d.q.criado_por_nome || '?'} em ${dataCurta(d.q.criado_em)}`;
+
+/* ===================== Filtros ===================== */
+const filtros = { p: { status: 'todos', busca: '' }, l: { status: 'todos', busca: '' } };
+function filtrar(f) {
+  const q = f.busca.trim().toLowerCase();
+  return [...processos.values()].filter(c => (f.status === 'todos' || c.status === f.status) &&
+    (!q || [c.credor, c.empenho, c.referente, c.nota, c.mes, c.criado_por_nome].join(' ').toLowerCase().includes(q)))
+    .sort((a, b) => b.criado_em.localeCompare(a.criado_em));
+}
+function chipsHtml(f) {
+  const cont = {}; for (const c of processos.values()) cont[c.status] = (cont[c.status] || 0) + 1;
+  return `<button data-f="todos" class="${f.status === 'todos' ? 'on' : ''}">Todos (${processos.size})</button>` +
+    STATUS.map(s => `<button data-f="${s.id}" class="${f.status === s.id ? 'on' : ''}">${s.label} (${cont[s.id] || 0})</button>`).join('');
 }
 
-/* ===================== Renderização: Status ===================== */
-let filtro = 'todos';
-function renderStatus() {
-  const todas = state.capas.filter(c => !c.lendo);
-  const cont = {}; todas.forEach(c => cont[c.status] = (cont[c.status] || 0) + 1);
-  $('chips').innerHTML = `<button data-f="todos" class="${filtro === 'todos' ? 'on' : ''}">Todos (${todas.length})</button>` +
-    STATUS.map(s => `<button data-f="${s.id}" class="${filtro === s.id ? 'on' : ''}">${s.label} (${cont[s.id] || 0})</button>`).join('');
-  const q = $('busca').value.trim().toLowerCase();
-  const vis = todas.filter(c => (filtro === 'todos' || c.status === filtro) &&
-    (!q || [c.credor, c.empenho, c.referente, c.nota, c.mes].join(' ').toLowerCase().includes(q)))
-    .sort((a, b) => (b.criadoEm || 0) - (a.criadoEm || 0));
-  $('statusLista').innerHTML = vis.length ? vis.map(c => {
+/* ===================== Renderização: Processos ===================== */
+const BTN_DEL = id => `<button class="del" data-del="${id}" aria-label="Excluir"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg></button>`;
+function renderProcessos() {
+  $('pChips').innerHTML = chipsHtml(filtros.p);
+  const vis = filtrar(filtros.p);
+  const lendo = [...processos.values()].filter(c => c.leitura === 'lendo').length;
+  const erros = [...processos.values()].filter(c => c.leitura === 'erro').length;
+  $('pResumo').innerHTML = (lendo || erros || envio.total) ? `<div class="card muted">
+    ${envio.total ? `<span class="spin"></span> Enviando fotos: ${envio.feitas}/${envio.total}<br>` : ''}
+    ${lendo ? `<span class="spin"></span> Lendo ${lendo} capa(s)…<br>` : ''}
+    ${erros ? `<span style="color:var(--err)">${erros} capa(s) com erro de leitura — toque para tentar de novo.</span>` : ''}</div>` : '';
+  $('pLista').innerHTML = vis.length ? vis.map(c => {
     const st = stInfo(c.status);
-    return `<div class="card" style="padding:10px 12px">
-      <div class="item" data-id="${c.id}" style="padding:0;border:0">
-        <div class="c">
-          <div class="t"><span>${esc(c.credor || '(sem credor)')}</span><span>${fmt(c.valor != null ? c.valor : c.valor_liquido)}</span></div>
-          <div class="d">${esc(c.empenho || '-')} · ${esc(c.referente || 'N/D')}${c.mes ? ' · ' + esc(c.mes) : ''}</div>
-          ${c.nota ? `<div class="d">📝 ${esc(c.nota)}</div>` : ''}
-        </div>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:8px">
+    let corpo;
+    if (c.leitura === 'lendo') corpo = `<div class="t"><span><span class="spin"></span> Lendo capa…</span></div><div class="d">Enviada por ${esc(c.criado_por_nome || '')}</div>`;
+    else if (c.leitura === 'erro') corpo = `<div class="t"><span>Não foi possível ler</span></div><div class="aviso">${esc(c.leitura_erro)} Toque para tentar de novo ou preencher.</div>`;
+    else {
+      const pr = checar(c), dups = duplicatasDe(c);
+      corpo = `<div class="t"><span>${esc(c.credor || '(sem credor)')}</span><span>${fmt(montante(c))}</span></div>
+        <div class="d">${c.credor === 'Diárias' ? 'Beneficiário: ' : ''}${esc(c.empenho || '-')} · ${esc(c.referente || 'N/D')}${c.mes ? ' · ' + esc(c.mes) : ''}</div>
+        <div class="d">Líq. ${fmt(c.valor_liquido)} · ISS ${c.iss_valor != null ? `<b>${fmt(c.iss_valor)}</b>` : '-'} · IRRF ${c.irrf_valor != null ? `<b>${fmt(c.irrf_valor)}</b>` : '-'}</div>
+        ${c.nota ? `<div class="d">📝 ${esc(c.nota)}</div>` : ''}
+        ${dups.map(d => `<div class="aviso">⚠ ${esc(textoDup(d))}</div>`).join('')}
+        ${pr.map(x => `<div class="aviso ${x.grave ? '' : 'am'}">⚠ ${esc(x.t)}</div>`).join('')}`;
+    }
+    return `<div class="proc" data-id="${c.id}">
+      <div class="topo"><div class="c">${corpo}</div>${BTN_DEL(c.id)}</div>
+      <div class="rodape">
         <select class="st-sel" data-sid="${c.id}" style="background:${st.cor}">${STATUS.map(s => `<option value="${s.id}" ${s.id === c.status ? 'selected' : ''}>${s.label}</option>`).join('')}</select>
-        <span class="muted" style="flex:1;text-align:right">${c.statusEm ? 'desde ' + new Date(c.statusEm).toLocaleDateString('pt-BR') : ''}</span>
-        ${BTN_DEL(c.id)}
+        <span class="muted" style="text-align:right">${esc(c.status_por_nome || '')}${c.status_em ? ' · ' + dataCurta(c.status_em) : ''}</span>
       </div></div>`;
-  }).join('') : `<div class="vazio">Nenhum processo${filtro !== 'todos' || q ? ' neste filtro' : ''}.</div>`;
+  }).join('') : `<div class="vazio">${processos.size ? 'Nenhum processo neste filtro.' : 'Nenhum processo ainda.<br>Toque em <b>Adicionar capas</b> e escolha ou tire as fotos.'}</div>`;
 }
-function render() { renderLista(); renderStatus(); }
+
+/* ===================== Renderização: Lista (seleção → PDF) ===================== */
+let selecao = new Set(ls.get('selecao', []));
+function salvarSelecao() { ls.set('selecao', [...selecao]); }
+function podarSelecao() {
+  let mudou = false;
+  for (const id of selecao) if (!processos.has(id) || processos.get(id).leitura !== 'ok') { selecao.delete(id); mudou = true; }
+  if (mudou) salvarSelecao();
+}
+function renderLista() {
+  $('lChips').innerHTML = chipsHtml(filtros.l);
+  const vis = filtrar(filtros.l).filter(c => c.leitura === 'ok');
+  $('lLista').innerHTML = vis.length ? vis.map(c => {
+    const st = stInfo(c.status), m = selecao.has(c.id);
+    return `<label class="sel ${m ? 'marcado' : ''}" data-lid="${c.id}">
+      <input type="checkbox" ${m ? 'checked' : ''} data-chk="${c.id}">
+      <div class="c" style="flex:1;min-width:0">
+        <div class="t"><span>${esc(c.credor || '(sem credor)')}</span><span>${fmt(montante(c))}</span></div>
+        <div class="d">${esc(c.empenho || '-')} · ${esc(c.referente || 'N/D')}${c.mes ? ' · ' + esc(c.mes) : ''}</div>
+        <div class="d"><span class="pill" style="background:${st.cor}">${st.label}</span> · lançado ${dataCurta(c.criado_em)}</div>
+      </div></label>`;
+  }).join('') : `<div class="vazio">Nenhum processo lido neste filtro.</div>`;
+  const sel = [...selecao].map(id => processos.get(id)).filter(Boolean);
+  $('barra').hidden = !sel.length;
+  $('barraInfo').innerHTML = `<b>${sel.length}</b> selecionado${sel.length > 1 ? 's' : ''} · ${fmt(r2(sel.reduce((s, c) => s + montante(c), 0)))}`;
+}
+function render() { if (!usuario) return; renderProcessos(); renderLista(); }
 
 /* ===================== Imagens ===================== */
 async function reduzir(file, max, q) {
@@ -254,187 +212,112 @@ async function reduzir(file, max, q) {
     const cv = document.createElement('canvas');
     cv.width = Math.round(img.naturalWidth * k); cv.height = Math.round(img.naturalHeight * k);
     cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
-    return cv.toDataURL('image/jpeg', q);
+    return await new Promise(ok => cv.toBlob(ok, 'image/jpeg', q));
   } finally { URL.revokeObjectURL(url); }
 }
-
-/* ===================== Leitura com a API do Claude ===================== */
-async function chamarClaude(dataUrl) {
-  const modelo = cfg.modelo;
-  const headers = {
-    'content-type': 'application/json',
-    'x-api-key': cfg.apiKey,
-    'anthropic-version': '2026-10-21',
-    'anthropic-dangerous-direct-browser-access': 'true',
-  };
-  const body = {
-    model: modelo,
-    max_tokens: 16000,
-    system: PROMPT,
-    output_config: { effort: 'high', format: { type: 'json_schema', schema: SCHEMA } },
-    messages: [{
-      role: 'user', content: [
-        { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: dataUrl.split(',')[1] } },
-        { type: 'text', text: 'Leia esta capa de processo de pagamento.' },
-      ],
-    }],
-  };
-  if (modelo !== 'claude-haiku-5-5') { // fallback automático do servidor caso o modelo recuse
-    headers['anthropic-beta'] = 'server-side-fallback-2026-07-01';
-    body.fallbacks = 'default';
-  }
-  for (let tent = 0; ; tent++) {
-    let resp;
-    try { resp = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers, body: JSON.stringify(body) }); }
-    catch (e) { if (tent < 2) { await new Promise(r => setTimeout(r, 1500 * (tent + 1))); continue; } throw new Error('Sem conexão com a internet.'); }
-    if (resp.ok) {
-      const j = await resp.json();
-      if (j.stop_reason === 'refusal') throw new Error('O modelo recusou ler esta imagem.');
-      if (j.stop_reason === 'max_tokens') throw new Error('Resposta incompleta.');
-      const txt = (j.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
-      const m = txt.match(/\{[\s\S]*\}/);
-      if (!m) throw new Error('Resposta sem dados.');
-      return JSON.parse(m[0]);
-    }
-    if ((resp.status === 429 || resp.status >= 500) && tent < 3) {
-      const ra = Number(resp.headers.get('retry-after')) || 2 * (tent + 1);
-      await new Promise(r => setTimeout(r, Math.min(ra, 20) * 1000)); continue;
-    }
-    let msg = ''; try { msg = (await resp.json()).error?.message || ''; } catch { }
-    if (resp.status === 401) throw new Error('Chave da API inválida (veja Ajustes).');
-    if (resp.status === 429) throw new Error('Limite de uso da API atingido. Tente em instantes.');
-    throw new Error(`Erro ${resp.status}. ${msg}`.trim());
-  }
-}
-/* ===================== Leitura no aparelho (OCR, sem API) ===================== */
-let ocrWorker = null, ocrFila = Promise.resolve();
-async function ocr(dataUrl) {
-  if (!window.Tesseract) throw new Error('Leitor não carregado. Abra o app com internet uma vez.');
-  const tarefa = ocrFila.then(async () => {
-    if (!ocrWorker) {
-      try { ocrWorker = await Tesseract.createWorker('por'); }
-      catch (e) { ocrWorker = null; throw new Error('Não foi possível carregar o leitor. Na primeira vez é preciso internet.'); }
-    }
-    return (await ocrWorker.recognize(dataUrl)).data.text || '';
-  });
-  ocrFila = tarefa.catch(() => { });
-  return tarefa;
-}
-const RE_DIN = /\d{1,3}(?:[.\s]\d{3})+,\d{2}|\d+,\d{2}/g;
-const RE_ROTULO = /\b(credor|empenho|valor|iss|irrf|m[eê]s|referente)\b/i;
-function dinheiro(s, somar) {
-  const semPct = String(s || '').replace(/\d+(?:[.,]\d+)?\s*%/g, ' ');
-  const v = (semPct.match(RE_DIN) || []).map(parseNum).filter(x => x != null);
-  if (!v.length) return null;
-  return somar ? r2(v.reduce((a, b) => a + b, 0)) : v[v.length - 1];
-}
-function interpretarTexto(texto) {
-  const linhas = texto.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-  // devolve o que vem depois do rótulo; se a linha só tem o rótulo, usa a linha seguinte
-  const depois = re => {
-    for (let i = 0; i < linhas.length; i++) {
-      const m = linhas[i].match(re); if (!m) continue;
-      let resto = linhas[i].slice(m.index + m[0].length).replace(/^[\s:.\-_|]+/, '').trim();
-      if (!resto && linhas[i + 1] && !RE_ROTULO.test(linhas[i + 1])) resto = linhas[i + 1];
-      return resto.replace(/[_|]{2,}/g, ' ').trim();
-    }
-    return '';
-  };
-  const cortar = s => s.split(/\s{3,}|\b(?:empenho|valor|iss|irrf|m[eê]s|referente)\b/i)[0].trim();
-  return {
-    credor: cortar(depois(/\bcredor(?:\s*\(a\))?/i)),
-    empenho: cortar(depois(/\bempenho(?:\s*n[ºo°.]*)?/i)),
-    valor_liquido: dinheiro(depois(/\bvalor\s*l[ií1l]qu[ií1l]do/i)),
-    valor: dinheiro(depois(/\bvalor(?!\s*l[ií1l]qu)(?:\s*bruto)?/i)),
-    iss_valor: dinheiro(depois(/\bISS(?:QN)?\b/i)),
-    irrf_valor: dinheiro(depois(/\bIRRF\b/i), true),
-    mes: cortar(depois(/\bm[eê]s(?:\s*de\s*refer[eê]ncia)?/i)),
-    referente: cortar(depois(/\breferente(?:\s*(?:a|à|ao))?\b/i)),
-    duvida: '',
-  };
-}
-async function lerLocal(dataUrl) {
-  const d = interpretarTexto(await ocr(dataUrl));
-  if (d.iss_valor != null && d.valor == null) d.iss_valor = null; // regra: ISS só com Valor preenchido
-  const achou = d.credor || d.empenho || d.referente || CAMPOS_NUM.some(k => d[k] != null);
-  if (!achou) throw new Error('Não consegui ler os campos desta foto.');
-  return d;
+async function hashArquivo(file) {
+  const h = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+  return [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-const numOuNull = v => (typeof v === 'number' && Number.isFinite(v)) ? r2(v) : null;
-async function lerCapa(c) {
-  c.lendo = true; c.erro = ''; render();
-  try {
-    const usaApi = cfg.modo === 'claude';
-    const d = usaApi ? await chamarClaude(c.img) : await lerLocal(c.img);
-    if (!d.credor && !d.valor && !d.valor_liquido && usaApi) throw new Error(d.duvida || 'Não parece uma capa de processo.');
-    c.local = !usaApi;
-    const credorLido = String(d.credor || '').trim();
-    if (c.diarias) { c.credor = 'Diárias'; c.empenho = credorLido; }
-    else { c.credor = credorLido; c.empenho = String(d.empenho || '').trim(); }
-    CAMPOS_NUM.forEach(k => c[k] = numOuNull(d[k]));
-    c.mes = String(d.mes || '').trim();
-    c.referente = String(d.referente || '').trim() || 'N/D';
-    c.duvida = String(d.duvida || '').trim();
-    c.duvida_campos = Array.isArray(d.duvida_campos) ? d.duvida_campos : [];
-    if (c.diarias && c.duvida_campos.includes('credor')) c.duvida_campos = c.duvida_campos.map(k => k === 'credor' ? 'empenho' : k);
-    const obs = String(d.observacao || '').trim();
-    if (obs && !c.nota) c.nota = obs;
-    delete c.img; // foto grande só é guardada enquanto a leitura não deu certo
-  } catch (e) { c.erro = e.message || String(e); }
-  c.lendo = false; salvar(); render();
-}
+/* ===================== Envio e leitura ===================== */
+const envio = { total: 0, feitas: 0 };
 const fila = []; let ativos = 0;
-function enfileirar(c) { fila.push(c); bombear(); }
+function enfileirar(tarefa) { fila.push(tarefa); bombear(); }
 function bombear() {
   while (ativos < 3 && fila.length) {
-    const c = fila.shift(); ativos++;
-    lerCapa(c).finally(() => { ativos--; bombear(); if (!ativos && !fila.length) fimLote(); });
+    const t = fila.shift(); ativos++;
+    t().catch(e => { console.error(e); toast(e.message || 'Erro ao enviar.'); })
+      .finally(() => { ativos--; envio.feitas++; if (!ativos && !fila.length) { envio.total = envio.feitas = 0; } render(); bombear(); });
   }
 }
-function fimLote() {
-  const l = daLista(), er = l.filter(c => c.erro).length;
-  toast(er ? `Leitura concluída — ${er} capa(s) com erro.` : 'Leitura concluída.');
+async function pedirLeitura(id) {
+  const { error } = await sb.functions.invoke('ler-capa', { body: { id, modelo: ls.get('modelo', 'claude-opus-5-5') } });
+  if (error) {
+    let msg = 'Não foi possível pedir a leitura ao servidor.';
+    try { const j = await error.context.json(); if (j.erro) msg = j.erro; } catch { }
+    await atualizar(id, { leitura: 'erro', leitura_erro: msg }).catch(() => { });
+  }
+}
+async function enviarFoto(file, diarias, hash) {
+  const blob = await reduzir(file, 2000, 0.85);
+  const { data: p, error } = await sb.from('processos').insert({ diarias, credor: diarias ? 'Diárias' : '', leitura: 'lendo', foto_hash: hash }).select().single();
+  if (error) throw error;
+  processos.set(p.id, normalizar(p)); render();
+  const caminho = `${p.id}.jpg`;
+  const up = await sb.storage.from('capas').upload(caminho, blob, { contentType: 'image/jpeg', upsert: false });
+  if (up.error) { await atualizar(p.id, { leitura: 'erro', leitura_erro: 'Falha ao enviar a foto. Exclua e envie de novo.' }); return; }
+  await atualizar(p.id, { foto_path: caminho });
+  await pedirLeitura(p.id);
 }
 async function aoEscolherFotos(files) {
   if (!files.length) return;
-  if (cfg.modo === 'claude' && !cfg.apiKey) { toast('Cadastre a chave da API em Ajustes ou mude a leitura para "No aparelho".', 4000); irPara('ajustes'); return; }
   const diarias = $('chkDiarias').checked;
-  toast(`${files.length} foto(s) recebida(s). Lendo…`);
+  const hashes = new Map(); // hash -> processo existente
+  for (const p of processos.values()) if (p.foto_hash) hashes.set(p.foto_hash, p);
+  const aceitas = [];
+  let repetidasLote = 0;
   for (const f of files) {
-    try {
-      const c = novaCapa({ diarias, lendo: true });
-      c.img = await reduzir(f, 2000, 0.85);
-      c.thumb = await reduzir(f, 900, 0.6);
-      state.capas.push(c); render(); enfileirar(c);
-    } catch (e) { toast('Uma das fotos não pôde ser aberta.'); }
+    let h = null; try { h = await hashArquivo(f); } catch { }
+    if (h && hashes.has(h)) {
+      const q = hashes.get(h);
+      if (q === 'lote') { repetidasLote++; if (!confirm('Você escolheu a mesma foto duas vezes neste envio. Enviar as duas?')) continue; }
+      else if (!confirm(`Esta foto já foi enviada por ${q.criado_por_nome || '?'} em ${dataCurta(q.criado_em)}${q.credor ? ` (${q.credor}, ${fmt(montante(q))})` : ''}.\nEnviar mesmo assim?`)) continue;
+    }
+    if (h) hashes.set(h, 'lote');
+    aceitas.push([f, h]);
   }
-  salvar();
+  if (!aceitas.length) return;
+  envio.total += aceitas.length;
+  toast(`${aceitas.length} foto(s) sendo enviada(s)…`);
+  for (const [f, h] of aceitas) enfileirar(() => enviarFoto(f, diarias, h));
+  render();
 }
-function novaCapa(extra = {}) {
-  return {
-    id: uid(), credor: extra.diarias ? 'Diárias' : '', empenho: '', valor: null, iss_valor: null, irrf_valor: null, valor_liquido: null,
-    mes: '', referente: 'N/D', duvida: '', nota: '', thumb: '', naLista: true,
-    status: 'recebido', statusEm: Date.now(), criadoEm: Date.now(), ...extra,
-  };
+async function lancarManual() {
+  const diarias = $('chkDiarias').checked;
+  const { data, error } = await sb.from('processos').insert({ diarias, credor: diarias ? 'Diárias' : '', leitura: 'ok' }).select().single();
+  if (error) { toast('Erro: ' + error.message); return; }
+  processos.set(data.id, normalizar(data)); render();
+  editNovo = true; abrirEditor(data.id);
+}
+async function excluir(id, perguntar = true) {
+  const c = processos.get(id); if (!c) return;
+  if (perguntar && !confirm(`Excluir ${c.credor || 'este processo'}${montante(c) ? ' (' + fmt(montante(c)) + ')' : ''}?\nSai para toda a equipe.`)) return false;
+  const { error } = await sb.from('processos').delete().eq('id', id);
+  if (error) { toast('Erro ao excluir: ' + error.message); return false; }
+  if (c.foto_path) sb.storage.from('capas').remove([c.foto_path]).catch(() => { });
+  processos.delete(id); selecao.delete(id); salvarSelecao(); render();
+  if (perguntar) toast('Processo excluído.');
+  return true;
 }
 
 /* ===================== Editor ===================== */
 let editId = null, editNovo = false;
-function abrirEditor(id) {
-  const c = state.capas.find(x => x.id === id); if (!c || c.lendo) return;
+async function abrirEditor(id) {
+  const c = processos.get(id); if (!c || c.leitura === 'lendo') return;
   editId = id;
-  $('edTit').textContent = editNovo ? 'Nova capa' : 'Capa';
-  $('edErro').textContent = c.erro ? 'Leitura falhou: ' + c.erro : '';
-  $('edFoto').hidden = !c.thumb; if (c.thumb) $('edFoto').src = c.thumb;
+  $('edTit').textContent = editNovo ? 'Novo processo' : 'Processo';
+  $('edErro').textContent = c.leitura === 'erro' ? 'Leitura falhou: ' + c.leitura_erro : '';
   $('e_credor').value = c.credor || ''; $('e_empenho').value = c.empenho || '';
   CAMPOS_NUM.forEach(k => $('e_' + k).value = fmtIn(c[k]));
   $('e_mes').value = c.mes || ''; $('e_referente').value = c.referente === 'N/D' ? '' : (c.referente || '');
   $('e_status').innerHTML = STATUS.map(s => `<option value="${s.id}">${s.label}</option>`).join('');
   $('e_status').value = c.status; $('e_nota').value = c.nota || '';
-  $('edReler').hidden = !c.img;
+  $('edReler').hidden = !c.foto_path;
+  $('edFoto').hidden = true; $('edFoto').removeAttribute('src');
+  $('edInfo').innerHTML = `Lançado por ${esc(c.criado_por_nome || '?')} em ${dataHora(c.criado_em)}` +
+    (c.alterado_por_nome && c.alterado_em !== c.criado_em ? `<br>Última alteração: ${esc(c.alterado_por_nome)} em ${dataHora(c.alterado_em)}` : '');
   atualizarRotulos(); previaChecagem();
   $('sheet').classList.add('on');
+  if (c.foto_path) {
+    sb.storage.from('capas').createSignedUrl(c.foto_path, 600).then(({ data }) => {
+      if (data && editId === id) { $('edFoto').src = data.signedUrl; $('edFoto').hidden = false; }
+    });
+  }
+  sb.from('status_historico').select('de, para, em, por_nome').eq('processo_id', id).order('em').then(({ data }) => {
+    if (!data || editId !== id || !data.length) return;
+    $('edInfo').innerHTML += `<br><b>Histórico de status</b><ul class="hist">${data.map(h => `<li>${dataHora(h.em)} — ${h.de ? esc(stInfo(h.de).label) + ' → ' : ''}${esc(stInfo(h.para).label)} (${esc(h.por_nome || '?')})</li>`).join('')}</ul>`;
+  });
 }
 function atualizarRotulos() { $('lblEmp').textContent = $('e_credor').value.trim() === 'Diárias' ? 'Beneficiário' : 'Empenho'; }
 function lerForm() {
@@ -446,29 +329,38 @@ function previaChecagem() {
   const pr = checar(lerForm());
   $('edChecagem').innerHTML = pr.map(x => `<div class="aviso ${x.grave ? '' : 'am'}">⚠ ${esc(x.t)}</div>`).join('');
 }
-function fecharEditor(descartarNovo) {
-  if (descartarNovo && editNovo) state.capas = state.capas.filter(c => c.id !== editId);
-  editId = null; editNovo = false; $('sheet').classList.remove('on'); render();
+async function fecharEditor(descartarNovo) {
+  const id = editId, novo = editNovo;
+  editId = null; editNovo = false; $('sheet').classList.remove('on');
+  if (descartarNovo && novo && id) await excluir(id, false);
+  render();
 }
-function salvarEditor() {
-  const c = state.capas.find(x => x.id === editId); if (!c) return;
-  Object.assign(c, lerForm());
-  c.nota = $('e_nota').value.trim(); c.erro = ''; c.duvida = ''; c.duvida_campos = []; c.local = false; delete c.diarias;
-  mudarStatus(c, $('e_status').value);
-  editNovo = false; salvar(); fecharEditor(false);
+async function salvarEditor() {
+  const id = editId; if (!id) return;
+  const campos = { ...lerForm(), nota: $('e_nota').value.trim(), status: $('e_status').value, duvida: '', duvida_campos: [], diarias: $('e_credor').value.trim() === 'Diárias' };
+  const c = processos.get(id);
+  if (c && c.leitura === 'erro') { campos.leitura = 'ok'; campos.leitura_erro = ''; }
+  $('edSalvar').disabled = true;
+  try { await atualizar(id, campos); editNovo = false; await fecharEditor(false); toast('Salvo.'); }
+  catch (e) { toast('Erro ao salvar: ' + e.message); }
+  finally { $('edSalvar').disabled = false; }
 }
-function mudarStatus(c, novo) { if (c.status !== novo) { c.status = novo; c.statusEm = Date.now(); } }
 
 /* ===================== PDF ===================== */
-function gerarPDF() {
-  const lista = daLista().filter(c => !c.lendo && !c.erro);
-  if (!lista.length) { toast('Não há capas lidas na lista.'); return null; }
+function grupos(lista) {
+  const g = {};
+  lista.forEach(c => (g[c.credor || '(sem credor)'] ||= []).push(c));
+  return Object.keys(g).sort((a, b) => a.localeCompare(b, 'pt-BR')).map(k => ({
+    credor: k, itens: g[k], total: r2(g[k].reduce((s, c) => s + montante(c), 0)),
+  }));
+}
+function gerarPDF(lista, titulo) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const M = 16, W = 178, PH = 297;
   const PRI = [31, 58, 82], SEC = [61, 90, 115], PAR = [247, 249, 250], SUB = [220, 228, 234], TXT = [32, 48, 61], DEST = [179, 84, 30];
   doc.setFont('helvetica', 'bold'); doc.setFontSize(19); doc.setTextColor(...PRI);
-  doc.text(state.titulo || 'Pagamento', M, M + 6);
+  doc.text(titulo || 'Pagamento', M, M + 6);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...TXT);
   doc.text('Data: ' + hoje(), M, M + 13);
   let y = M + 20, num = 1;
@@ -514,13 +406,11 @@ function gerarPDF() {
   return doc;
 }
 async function compartilharPDF() {
-  const lendo = daLista().some(c => c.lendo);
-  if (lendo) { toast('Aguarde terminar a leitura das capas.'); return; }
-  const erros = daLista().filter(c => c.erro).length;
-  if (erros && !confirm(`${erros} capa(s) com erro de leitura ficarão fora do PDF. Gerar mesmo assim?`)) return;
-  let doc; try { doc = gerarPDF(); } catch (e) { console.error(e); toast('Erro ao gerar o PDF.'); return; }
-  if (!doc) return;
-  const nome = `${(state.titulo || 'Pagamento').replace(/[\\/:*?"<>|]/g, '')} ${hoje().replace(/\//g, '-')}.pdf`;
+  const lista = [...selecao].map(id => processos.get(id)).filter(c => c && c.leitura === 'ok');
+  if (!lista.length) { toast('Marque pelo menos um processo.'); return; }
+  const titulo = $('titulo').value.trim() || 'Pagamento';
+  let doc; try { doc = gerarPDF(lista, titulo); } catch (e) { console.error(e); toast('Erro ao gerar o PDF.'); return; }
+  const nome = `${titulo.replace(/[\\/:*?"<>|]/g, '')} ${hoje().replace(/\//g, '-')}.pdf`;
   const blob = doc.output('blob');
   const file = new File([blob], nome, { type: 'application/pdf' });
   try {
@@ -533,82 +423,176 @@ function baixar(blob, nome) {
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
 
-/* ===================== Navegação e eventos ===================== */
+/* ===================== Exportar / importar ===================== */
+function exportarCSV() {
+  const cols = ['credor', 'empenho', 'valor', 'iss_valor', 'irrf_valor', 'valor_liquido', 'mes', 'referente', 'status', 'nota', 'criado_por_nome', 'criado_em', 'status_por_nome', 'status_em'];
+  const cel = v => { const s = v == null ? '' : (typeof v === 'number' ? String(v).replace('.', ',') : String(v)); return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const linhas = [cols.join(';'), ...[...processos.values()].filter(c => c.leitura === 'ok').map(c => cols.map(k => cel(k === 'status' ? stInfo(c.status).label : c[k])).join(';'))];
+  baixar(new Blob(['﻿' + linhas.join('\r\n')], { type: 'text/csv;charset=utf-8' }), `processos-${hoje().replace(/\//g, '-')}.csv`);
+}
+const DO_BACKUP = c => ({
+  credor: c.credor || '', empenho: c.empenho || '', mes: c.mes || '', referente: c.referente || 'N/D', nota: c.nota || '',
+  valor: n2(c.valor), iss_valor: n2(c.iss_valor), irrf_valor: n2(c.irrf_valor), valor_liquido: n2(c.valor_liquido),
+  status: STATUS.some(s => s.id === c.status) ? c.status : 'recebido', diarias: c.credor === 'Diárias', leitura: 'ok',
+  ...(c.criado_em || c.criadoEm ? { criado_em: new Date(c.criado_em || c.criadoEm).toISOString() } : {}),
+});
+async function importarLista(capas) {
+  const validas = capas.filter(c => !c.lendo && !c.erro && (c.credor || c.valor != null || c.valor_liquido != null)).map(DO_BACKUP);
+  if (!validas.length) { toast('Nada para importar.'); return 0; }
+  for (let i = 0; i < validas.length; i += 200) {
+    const { error } = await sb.from('processos').insert(validas.slice(i, i + 200));
+    if (error) throw error;
+  }
+  await carregarTudo();
+  return validas.length;
+}
+// Processos salvos neste aparelho pela versão antiga (antes do servidor)
+function lerLocalAntigo() {
+  return new Promise(ok => {
+    try {
+      const r = indexedDB.open('capas-db', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('kv');
+      r.onerror = () => ok(null);
+      r.onsuccess = () => {
+        try {
+          const q = r.result.transaction('kv').objectStore('kv').get('state');
+          q.onsuccess = () => ok(q.result && Array.isArray(q.result.capas) ? q.result : null); q.onerror = () => ok(null);
+        } catch { ok(null); }
+      };
+    } catch { ok(null); }
+  });
+}
+async function verificarLocalAntigo() {
+  if (ls.get('localImportado', false)) return;
+  const st = await lerLocalAntigo();
+  const n = st ? st.capas.filter(c => !c.lendo && !c.erro).length : 0;
+  $('boxLocal').hidden = !n;
+  if (n) $('bLocal').textContent = `Enviar ${n} processo(s) salvos só neste aparelho`;
+}
+
+/* ===================== Login e início ===================== */
+function mostrar(tela) {
+  $('telaConfig').hidden = tela !== 'config';
+  $('telaLogin').hidden = tela !== 'login';
+  $('nav').hidden = tela !== 'app';
+  document.body.classList.toggle('semnav', tela !== 'app');
+  document.querySelectorAll('.tab').forEach(s => s.classList.toggle('on', tela === 'app' && s.id === 'tab-' + abaAtual));
+}
+let abaAtual = 'processos';
 function irPara(tab) {
+  abaAtual = tab;
   document.querySelectorAll('.tab').forEach(s => s.classList.toggle('on', s.id === 'tab-' + tab));
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
-  $('hTitulo').textContent = { lista: 'Capas de Pagamento', status: 'Status dos processos', ajustes: 'Ajustes' }[tab];
+  $('hTitulo').textContent = { processos: 'Processos', lista: 'Lista para impressão', ajustes: 'Ajustes' }[tab];
   window.scrollTo(0, 0);
 }
-document.querySelector('nav').addEventListener('click', e => { const b = e.target.closest('button'); if (b) irPara(b.dataset.tab); });
+async function entrouNoApp(user) {
+  usuario = user;
+  $('aEmail').textContent = user.email || '';
+  $('aNome').value = user.user_metadata?.nome || '';
+  mostrar('app'); irPara(abaAtual);
+  try { await carregarTudo(); } catch (e) { toast('Erro ao carregar: ' + e.message, 5000); }
+  assinarTempoReal();
+  verificarLocalAntigo();
+}
+function saiuDoApp() {
+  usuario = null; processos = new Map();
+  if (canal) { sb.removeChannel(canal); canal = null; }
+  $('hInfo').textContent = ''; $('hTitulo').textContent = 'Capas de Pagamento';
+  mostrar('login');
+}
 
+/* ===================== Eventos ===================== */
+document.querySelector('nav').addEventListener('click', e => { const b = e.target.closest('button'); if (b) irPara(b.dataset.tab); });
+$('fLogin').addEventListener('submit', async e => {
+  e.preventDefault(); $('lErro').textContent = ''; $('bEntrar').disabled = true;
+  const { error } = await sb.auth.signInWithPassword({ email: $('lEmail').value.trim(), password: $('lSenha').value });
+  $('bEntrar').disabled = false;
+  if (error) { $('lErro').textContent = /invalid/i.test(error.message) ? 'E-mail ou senha incorretos.' : error.message; $('lSenha').value = ''; $('lSenha').focus(); return; }
+  $('lSenha').value = ''; // a entrada no app vem pelo aviso de login (onAuthStateChange)
+});
 $('bAdd').onclick = () => $('fotos').click();
 $('fotos').onchange = e => { const f = [...e.target.files]; e.target.value = ''; aoEscolherFotos(f); };
-$('titulo').oninput = e => { state.titulo = e.target.value.trim() || 'Pagamento'; salvar(); };
-$('bPdf').onclick = compartilharPDF;
-$('bManual').onclick = () => { const c = novaCapa({ diarias: $('chkDiarias').checked }); state.capas.push(c); editNovo = true; abrirEditor(c.id); };
-$('bNova').onclick = () => {
-  const l = daLista(); if (!l.length) return;
-  if (!confirm(`Começar uma lista nova?\nAs ${l.length} capas saem da lista, mas continuam na aba Status.`)) return;
-  state.capas = state.capas.filter(c => !(c.naLista && (c.erro || c.lendo)));
-  state.capas.forEach(c => c.naLista = false);
-  salvar(); render();
-};
-$('lista').addEventListener('click', e => {
-  const d = e.target.closest('[data-del]'); if (d) { excluirCapa(d.dataset.del); return; }
-  const it = e.target.closest('.item'); if (it) abrirEditor(it.dataset.id);
+$('bManual').onclick = lancarManual;
+
+function ligarFiltro(k, chips, busca, rend) {
+  $(chips).addEventListener('click', e => { const b = e.target.closest('button'); if (b) { filtros[k].status = b.dataset.f; rend(); } });
+  $(busca).oninput = e => { filtros[k].busca = e.target.value; rend(); };
+}
+ligarFiltro('p', 'pChips', 'pBusca', renderProcessos);
+ligarFiltro('l', 'lChips', 'lBusca', renderLista);
+
+$('pLista').addEventListener('click', e => {
+  const d = e.target.closest('[data-del]'); if (d) { excluir(d.dataset.del); return; }
+  if (e.target.closest('select')) return;
+  const it = e.target.closest('.proc'); if (it) abrirEditor(it.dataset.id);
 });
-$('statusLista').addEventListener('click', e => {
-  const d = e.target.closest('[data-del]'); if (d) { excluirCapa(d.dataset.del); return; }
-  if (e.target.closest('select')) return; const it = e.target.closest('.item'); if (it) abrirEditor(it.dataset.id); });
-$('statusLista').addEventListener('change', e => {
+$('pLista').addEventListener('change', async e => {
   const s = e.target.closest('select[data-sid]'); if (!s) return;
-  const c = state.capas.find(x => x.id === s.dataset.sid); if (!c) return;
-  mudarStatus(c, s.value); salvar(); render(); toast('Status: ' + stInfo(c.status).label);
+  try { await atualizar(s.dataset.sid, { status: s.value }); toast('Status: ' + stInfo(s.value).label); }
+  catch (er) { toast('Erro: ' + er.message); render(); }
 });
-$('chips').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { filtro = b.dataset.f; renderStatus(); } });
-$('busca').oninput = renderStatus;
+$('lLista').addEventListener('change', e => {
+  const c = e.target.closest('[data-chk]'); if (!c) return;
+  if (c.checked) selecao.add(c.dataset.chk); else selecao.delete(c.dataset.chk);
+  salvarSelecao(); renderLista();
+});
+$('bSelVis').onclick = () => { filtrar(filtros.l).filter(c => c.leitura === 'ok').forEach(c => selecao.add(c.id)); salvarSelecao(); renderLista(); };
+$('bLimpar').onclick = () => { selecao.clear(); salvarSelecao(); renderLista(); };
+$('bPdf').onclick = compartilharPDF;
+$('titulo').value = ls.get('titulo', 'Pagamento');
+$('titulo').oninput = e => ls.set('titulo', e.target.value);
 
 $('edX').onclick = () => fecharEditor(true);
 $('sheet').addEventListener('click', e => { if (e.target === $('sheet')) fecharEditor(true); });
 $('edSalvar').onclick = salvarEditor;
-$('edExcluir').onclick = () => {
-  if (!editNovo && !confirm('Excluir esta capa de vez (da lista e do Status)?')) return;
-  state.capas = state.capas.filter(c => c.id !== editId); editNovo = false; salvar(); fecharEditor(false);
-};
-$('edReler').onclick = () => {
-  const c = state.capas.find(x => x.id === editId); if (!c || !c.img) return;
-  if (cfg.modo === 'claude' && !cfg.apiKey) { toast('Cadastre a chave da API em Ajustes.'); return; }
-  fecharEditor(false); enfileirar(c);
+$('edExcluir').onclick = async () => { const id = editId, novo = editNovo; if (await excluir(id, !novo) !== false) { editNovo = false; fecharEditor(false); } };
+$('edReler').onclick = async () => {
+  const id = editId; await fecharEditor(false);
+  try { await atualizar(id, { leitura: 'lendo', leitura_erro: '' }); await pedirLeitura(id); } catch (e) { toast('Erro: ' + e.message); }
 };
 ['e_valor', 'e_iss_valor', 'e_irrf_valor', 'e_valor_liquido'].forEach(i => $(i).oninput = previaChecagem);
 $('e_credor').oninput = atualizarRotulos;
 
-const mostrarApi = () => { $('boxApi').hidden = $('modo').value !== 'claude'; $('txtLocal').hidden = $('modo').value === 'claude'; };
-$('modo').onchange = () => { cfg.modo = $('modo').value; mostrarApi(); };
-$('bSalvarCfg').onclick = () => { cfg.modo = $('modo').value; cfg.apiKey = $('apiKey').value.trim(); cfg.modelo = $('modelo').value; toast('Ajustes salvos.'); };
-$('bExport').onclick = () => {
-  const dados = { ...state, capas: state.capas.map(({ img, ...r }) => r) };
-  baixar(new Blob([JSON.stringify(dados)], { type: 'application/json' }), `capas-backup-${hoje().replace(/\//g, '-')}.json`);
+$('modelo').value = ls.get('modelo', 'claude-opus-5-5');
+$('modelo').onchange = e => { ls.set('modelo', e.target.value); toast('Modelo salvo.'); };
+$('bSalvarNome').onclick = async () => {
+  const nome = $('aNome').value.trim();
+  const { error } = await sb.auth.updateUser({ data: { nome } });
+  if (error) { toast('Erro: ' + error.message); return; }
+  await sb.auth.refreshSession(); toast('Nome salvo.');
 };
+$('bSair').onclick = async () => { if (confirm('Sair desta conta?')) { await sb.auth.signOut(); } };
+$('bExport').onclick = exportarCSV;
 $('bImport').onclick = () => $('fImport').click();
 $('fImport').onchange = async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
   try {
     const d = JSON.parse(await f.text());
-    if (!Array.isArray(d.capas)) throw 0;
-    if (!confirm(`Substituir os dados deste aparelho pelos do backup (${d.capas.length} processos)?`)) return;
-    state = { titulo: d.titulo || 'Pagamento', capas: d.capas }; salvar(); iniciarTela(); toast('Backup importado.');
-  } catch { toast('Arquivo de backup inválido.'); }
+    if (!Array.isArray(d.capas)) throw new Error('Arquivo de backup inválido.');
+    if (!confirm(`Enviar ${d.capas.length} processo(s) do backup para o servidor da equipe?`)) return;
+    toast(`${await importarLista(d.capas)} processo(s) importado(s).`);
+  } catch (er) { toast(er.message || 'Arquivo de backup inválido.'); }
 };
+$('bLocal').onclick = async () => {
+  const st = await lerLocalAntigo(); if (!st) return;
+  if (!confirm('Enviar os processos salvos neste aparelho para o servidor da equipe?')) return;
+  try { const n = await importarLista(st.capas); ls.set('localImportado', true); $('boxLocal').hidden = true; toast(`${n} processo(s) enviado(s).`); }
+  catch (er) { toast('Erro: ' + er.message); }
+};
+document.addEventListener('visibilitychange', () => { if (!document.hidden && usuario) carregarTudo().catch(() => { }); });
 
-function iniciarTela() {
-  $('titulo').value = state.titulo || 'Pagamento';
-  $('apiKey').value = cfg.apiKey; $('modelo').value = cfg.modelo; $('modo').value = cfg.modo; mostrarApi();
-  render();
-}
 (async () => {
-  await carregar(); iniciarTela();
-  if (navigator.storage?.persist) navigator.storage.persist().catch(() => { });
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { });
+  try { localStorage.removeItem('apiKey'); localStorage.removeItem('modo2'); } catch { } // chave antiga: agora fica só no servidor
+  if (!CFG.supabaseUrl || !CFG.supabaseAnonKey || !window.supabase) { mostrar('config'); return; }
+  sb = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, { auth: { persistSession: true, autoRefreshToken: true } });
+  // Não chamar o Supabase dentro deste aviso (pode travar): o início do app vai para depois.
+  sb.auth.onAuthStateChange((ev, sessao) => {
+    if (sessao?.user) {
+      const novo = !usuario; usuario = sessao.user;
+      if (novo) setTimeout(() => entrouNoApp(sessao.user), 0);
+    } else if (usuario) saiuDoApp();
+    else mostrar('login');
+  });
 })();

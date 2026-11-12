@@ -92,6 +92,13 @@ create trigger processos_depois after insert or update on public.processos
   for each row execute function public.processos_depois();
 
 -- ============ Acesso: todo usuário logado pode tudo; quem não está logado, nada ============
+-- Liberações explícitas: funcionam mesmo com "Automatically expose new tables" desligado.
+grant usage on schema public to authenticated;
+revoke all on public.processos, public.status_historico from anon;
+grant select, insert, update, delete on public.processos to authenticated;
+grant select on public.status_historico to authenticated;
+grant execute on function public.nome_usuario() to authenticated;
+
 alter table public.processos enable row level security;
 alter table public.status_historico enable row level security;
 

@@ -156,6 +156,17 @@ function grupos(lista) {
   }));
 }
 
+/* ===================== Excluir ===================== */
+const BTN_DEL = id => `<button class="del" data-del="${id}" aria-label="Excluir"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg></button>`;
+function excluirCapa(id) {
+  const c = state.capas.find(x => x.id === id); if (!c) return;
+  const nome = c.credor || 'esta capa';
+  if (!confirm(`Excluir ${nome}${c.valor != null || c.valor_liquido != null ? ' (' + fmt(c.valor != null ? c.valor : c.valor_liquido) + ')' : ''}?\nSai da lista e do Status.`)) return;
+  const i = fila.indexOf(c); if (i >= 0) fila.splice(i, 1);
+  state.capas = state.capas.filter(x => x.id !== id);
+  salvar(); render(); toast('Capa excluída.');
+}
+
 /* ===================== Renderização: Lista ===================== */
 function renderLista() {
   const lista = daLista();
@@ -181,7 +192,7 @@ function renderLista() {
             <div class="d">${esc(c.referente || 'N/D')}${c.mes ? ' · ' + esc(c.mes) : ''} · <span class="pill" style="background:${st.cor}">${st.label}</span></div>
             ${pr.map(x => `<div class="aviso ${x.grave ? '' : 'am'}">⚠ ${esc(x.t)}</div>`).join('')}
             ${c.local ? `<div class="aviso am">Lido no aparelho — toque e confira com a foto</div>` : ''}`}
-        </div></div>`;
+        </div>${BTN_DEL(c.id)}</div>`;
     }
     html += `<div class="subt"><span>SUBTOTAL</span><span>${fmt(g.total)}</span></div></div>`;
   }
@@ -217,7 +228,8 @@ function renderStatus() {
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:8px">
         <select class="st-sel" data-sid="${c.id}" style="background:${st.cor}">${STATUS.map(s => `<option value="${s.id}" ${s.id === c.status ? 'selected' : ''}>${s.label}</option>`).join('')}</select>
-        <span class="muted">${c.statusEm ? 'desde ' + new Date(c.statusEm).toLocaleDateString('pt-BR') : ''}</span>
+        <span class="muted" style="flex:1;text-align:right">${c.statusEm ? 'desde ' + new Date(c.statusEm).toLocaleDateString('pt-BR') : ''}</span>
+        ${BTN_DEL(c.id)}
       </div></div>`;
   }).join('') : `<div class="vazio">Nenhum processo${filtro !== 'todos' || q ? ' neste filtro' : ''}.</div>`;
 }
@@ -530,8 +542,13 @@ $('bNova').onclick = () => {
   state.capas.forEach(c => c.naLista = false);
   salvar(); render();
 };
-$('lista').addEventListener('click', e => { const it = e.target.closest('.item'); if (it) abrirEditor(it.dataset.id); });
-$('statusLista').addEventListener('click', e => { if (e.target.closest('select')) return; const it = e.target.closest('.item'); if (it) abrirEditor(it.dataset.id); });
+$('lista').addEventListener('click', e => {
+  const d = e.target.closest('[data-del]'); if (d) { excluirCapa(d.dataset.del); return; }
+  const it = e.target.closest('.item'); if (it) abrirEditor(it.dataset.id);
+});
+$('statusLista').addEventListener('click', e => {
+  const d = e.target.closest('[data-del]'); if (d) { excluirCapa(d.dataset.del); return; }
+  if (e.target.closest('select')) return; const it = e.target.closest('.item'); if (it) abrirEditor(it.dataset.id); });
 $('statusLista').addEventListener('change', e => {
   const s = e.target.closest('select[data-sid]'); if (!s) return;
   const c = state.capas.find(x => x.id === s.dataset.sid); if (!c) return;

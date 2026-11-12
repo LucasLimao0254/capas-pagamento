@@ -1,5 +1,5 @@
 // Service worker: deixa o app abrir sem internet (a leitura das fotos continua precisando de internet).
-const CACHE = 'capas-v3';
+const CACHE = 'capas-v4';
 const SHELL = [
   'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js',
   './', 'index.html', 'app.js', 'manifest.webmanifest', 'icon-180.png', 'icon-512.png',

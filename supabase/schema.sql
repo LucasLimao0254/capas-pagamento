@@ -329,6 +329,18 @@ insert into storage.buckets (id, name, public) values ('capas', 'capas', false)
 drop policy if exists "capas: logados leem" on storage.objects;
 drop policy if exists "capas: logados enviam" on storage.objects;
 drop policy if exists "capas: logados excluem" on storage.objects;
-create policy "capas: logados leem"    on storage.objects for select to authenticated using (bucket_id = 'capas');
-create policy "capas: logados enviam"  on storage.objects for insert to authenticated with check (bucket_id = 'capas');
-create policy "capas: logados excluem" on storage.objects for delete to authenticated using (bucket_id = 'capas');
+drop policy if exists "capas: compras envia" on storage.objects;
+drop policy if exists "capas: setor exclui" on storage.objects;
+-- Foto pode ser apagada por quem pode mexer no processo dela (ou, se o processo já foi excluído, por quem tem setor).
+create or replace function public.pode_apagar_foto(arquivo text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select public.sou_admin()
+      or exists (select 1 from processos p where p.foto_path = arquivo and public.pode_mexer(p.status))
+      or (public.meu_setor() is not null and not exists (select 1 from processos p where p.foto_path = arquivo))
+$$;
+grant execute on function public.pode_apagar_foto(text) to authenticated;
+create policy "capas: logados leem"  on storage.objects for select to authenticated using (bucket_id = 'capas');
+create policy "capas: compras envia" on storage.objects for insert to authenticated
+  with check (bucket_id = 'capas' and (public.sou_admin() or public.meu_setor() = 'compras'));
+create policy "capas: setor exclui"  on storage.objects for delete to authenticated
+  using (bucket_id = 'capas' and public.pode_apagar_foto(name));

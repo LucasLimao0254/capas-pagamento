@@ -127,8 +127,8 @@ const adminClient = () => createClient(Deno.env.get("SUPABASE_URL")!, chaveServi
 
 async function processar(id: string, modelo: string) {
   const admin = adminClient();
-  const { data: p, error } = await admin.from("processos").select("id, foto_path, diarias, nota").eq("id", id).single();
-  if (error || !p) return;
+  const { data: p, error } = await admin.from("processos").select("id, foto_path, diarias, nota, leitura").eq("id", id).single();
+  if (error || !p || p.leitura !== "lendo") return; // só capas aguardando leitura
   try {
     if (!p.foto_path) throw new Error("Processo sem foto.");
     const { data: arq, error: e2 } = await admin.storage.from("capas").download(p.foto_path);
@@ -175,6 +175,18 @@ Deno.serve(async (req) => {
   try { corpo = await req.json(); } catch { return json({ erro: "Pedido inválido." }, 400); }
   if (!corpo.id) return json({ erro: "Falta o id do processo." }, 400);
   const modelo = MODELOS.includes(corpo.modelo ?? "") ? corpo.modelo! : "claude-opus-5-5";
+
+  // Só lê capa que está aguardando leitura e só a pedido de quem pode mexer no processo
+  // (mesma regra do banco: setor responsável pela etapa, ou administrador).
+  const admin = adminClient();
+  const { data: proc } = await admin.from("processos").select("status, leitura").eq("id", corpo.id).maybeSingle();
+  if (!proc) return json({ erro: "Processo não encontrado." }, 404);
+  if (proc.leitura !== "lendo") return json({ erro: "Esta capa não está aguardando leitura." }, 409);
+  const { data: perfil } = await admin.from("perfis").select("setor, admin").eq("id", user.id).maybeSingle();
+  const responsavel = ["montagem", "correcao"].includes(proc.status) ? "compras" : proc.status === "concluido" ? null : "controle";
+  if (!perfil?.admin && !(perfil?.setor && perfil.setor === responsavel)) {
+    return json({ erro: "Este processo não está com o seu setor." }, 403);
+  }
 
   // @ts-ignore EdgeRuntime existe no Supabase
   EdgeRuntime.waitUntil(processar(corpo.id, modelo));

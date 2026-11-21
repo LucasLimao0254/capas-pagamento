@@ -85,6 +85,21 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
 .foto{width:100%;border-radius:10px;margin:6px 0;display:block;background:var(--sub);min-height:60px}
 .check{display:flex;align-items:center;gap:8px;margin:10px 2px 0;font-size:14px}
 .check input{width:20px;height:20px}
+.acoes{display:flex;flex-direction:column;gap:6px;margin:8px 0}
+.acoes .btn{width:100%;text-align:left;padding:10px 12px;min-height:42px;font-size:15px}
+.proc .acoes{flex-direction:row;flex-wrap:wrap;margin:8px 0 0}
+.proc .acoes .btn{width:auto;flex:1 1 auto;font-size:13.5px;padding:8px 10px;min-height:38px;text-align:center}
+.etapa{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:12.5px;font-weight:600;color:#fff;white-space:nowrap}
+.com{font-size:12.5px;color:var(--mut)}
+.tag{display:inline-block;border-radius:6px;padding:1px 7px;font-size:12px;font-weight:600;background:#F6E3E3;color:var(--err);margin-left:4px}
+.tag.am{background:#FFF3CF;color:var(--warn)}
+.ret{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--lin);font-size:14px}
+.ret .btn{min-height:36px;padding:6px 10px;font-size:13px}
+.pessoa{display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--lin)}
+.pessoa .c{flex:1;min-width:0;font-size:14px;overflow-wrap:anywhere}
+.pessoa select{width:auto;min-height:38px;padding:6px 8px}
+.pessoa label{margin:0;display:flex;align-items:center;gap:4px;font-size:12.5px}
+input:disabled,textarea:disabled,select:disabled{background:#F2F5F7;color:var(--txt);opacity:1}
 .hist{font-size:13px;color:var(--mut);margin:4px 0 0;padding-left:18px}
 #toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#20303D;color:#fff;
   padding:10px 14px;border-radius:10px;font-size:14px;z-index:30;display:none;max-width:90%;text-align:center}
@@ -118,12 +133,13 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
 
   <!-- PROCESSOS -->
   <section class="tab" id="tab-processos">
-    <div class="card">
+    <div class="card" id="boxLancar">
       <div class="row"><button class="btn" id="bAdd">＋ Adicionar capas (fotos)</button></div>
       <label class="check"><input type="checkbox" id="chkDiarias"> Lançar estas fotos sob "Diárias"</label>
       <div class="row" style="margin-top:10px"><button class="btn sec" id="bManual">Lançar manual</button></div>
       <input type="file" id="fotos" accept="image/*" multiple hidden>
     </div>
+    <div class="card muted" id="boxSetor" hidden></div>
     <input type="search" id="pBusca" placeholder="Buscar credor, empenho, referente…">
     <div class="chips" id="pChips" style="margin-top:8px"></div>
     <div id="pResumo"></div>
@@ -155,10 +171,23 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
     <div class="card">
       <b>Sua conta</b>
       <p class="muted" id="aEmail"></p>
-      <label>Seu nome (aparece em quem lançou e quem mudou o status)</label>
+      <label>Seu nome (aparece em quem lançou e em quem moveu cada etapa)</label>
       <input type="text" id="aNome" autocomplete="name">
       <div class="row" style="margin-top:10px"><button class="btn" id="bSalvarNome">Salvar nome</button>
         <button class="btn per" id="bSair">Sair</button></div>
+    </div>
+    <div class="card" id="boxAdmin" hidden>
+      <b>Equipe (administrador)</b>
+      <p class="muted">Defina o setor de cada pessoa. Sem setor, a pessoa só visualiza. Para cadastrar alguém novo: painel do Supabase → Authentication → Users → Add user.</p>
+      <div id="aEquipe"></div>
+    </div>
+    <div class="card">
+      <b>Alertas</b>
+      <label>Avisar processo parado na mesma etapa há mais de</label>
+      <select id="diasParado">
+        <option value="2">2 dias</option><option value="3">3 dias</option><option value="5">5 dias</option>
+        <option value="7">7 dias</option><option value="10">10 dias</option><option value="15">15 dias</option>
+      </select>
     </div>
     <div class="card">
       <b>Leitura das capas</b>
@@ -198,6 +227,8 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
 <!-- EDITOR -->
 <div class="sheet" id="sheet"><div>
   <h2><span id="edTit">Processo</span><button id="edX" aria-label="Fechar">×</button></h2>
+  <div id="edEtapa"></div>
+  <div id="edAcoes" class="acoes"></div>
   <div id="edErro" class="aviso"></div>
   <img id="edFoto" class="foto" alt="Foto da capa" hidden>
   <label>Credor</label><input type="text" id="e_credor">
@@ -210,15 +241,29 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
     <div><label>Mês</label><input type="text" id="e_mes"></div>
     <div><label>Referente</label><input type="text" id="e_referente"></div>
   </div>
-  <label>Status do processo</label><select id="e_status"></select>
   <label>Observação</label><textarea id="e_nota" rows="2"></textarea>
   <div id="edChecagem"></div>
-  <div class="row" style="margin-top:14px">
+  <div id="edRet"></div>
+  <div class="row" style="margin-top:14px" id="edBotoes">
     <button class="btn" id="edSalvar">Salvar</button>
     <button class="btn sec" id="edReler" hidden>Ler de novo</button>
     <button class="btn per" id="edExcluir">Excluir</button>
   </div>
   <div id="edInfo" class="muted" style="margin-top:12px"></div>
+</div></div>
+
+<!-- MOVER PROCESSO (botões de etapa) -->
+<div class="sheet" id="mover" style="z-index:25"><div>
+  <h2><span id="mvTit">Mover processo</span><button id="mvX" aria-label="Fechar">×</button></h2>
+  <p class="muted" id="mvDesc"></p>
+  <div id="mvBoxForma" hidden>
+    <label>Como foi encaminhado</label>
+    <select id="mvForma"><option value="Processo físico encaminhado">Processo físico encaminhado</option><option value="Foto enviada para pagamento">Foto enviada para pagamento</option></select>
+  </div>
+  <div id="mvBoxData" hidden><label>Data do pagamento</label><input type="date" id="mvData"></div>
+  <label id="mvLblObs">Observação (opcional)</label><textarea id="mvObs" rows="3"></textarea>
+  <div id="mvErro" class="aviso"></div>
+  <div class="row" style="margin-top:12px"><button class="btn" id="mvOk">Confirmar</button></div>
 </div></div>
 <div id="toast"></div>
 

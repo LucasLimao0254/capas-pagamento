@@ -38,4 +38,13 @@ A chave *anon*/*publishable* é pública por natureza; **nunca** coloque a *serv
 **Authentication → Users → Add user → Create new user**: e-mail e senha de cada pessoa, com **Auto Confirm User** marcado.
 Para trocar a senha de alguém, faça pelo mesmo menu.
 
+## 8. Definir os setores
+A conta mais antiga do projeto (quem criou o Supabase) vira **administrador** automaticamente.
+No app, o administrador abre **Ajustes → Equipe** e escolhe o setor de cada pessoa: **Compras** ou **Controle Interno**.
+Sem setor, a pessoa só visualiza.
+
 Pronto: cada pessoa abre o app, entra com e-mail e senha e, em **Ajustes**, coloca o próprio nome.
+
+## Atualizações do banco
+Quando uma versão nova do app trouxer mudanças em `supabase/schema.sql`, cole o arquivo inteiro de novo no
+**SQL Editor** e clique em **Run** *antes* de publicar o app. Ele só acrescenta o que falta e converte os dados.

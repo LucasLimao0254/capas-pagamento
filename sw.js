@@ -1,12 +1,12 @@
 // Service worker: deixa a tela do app abrir mesmo sem internet.
 // Só guarda os arquivos do próprio app e as bibliotecas; nunca os dados do servidor.
-const CACHE = 'capas-v6';
+const CACHE = 'capas-v7';
 const BIBLIOTECAS = [
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js',
 ];
-const SHELL = ['./', 'index.html', 'app.js', 'config.js', 'manifest.webmanifest', 'icon-180.png', 'icon-512.png', ...BIBLIOTECAS];
+const SHELL = ['./', 'index.html', 'app.js', 'config.js', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', ...BIBLIOTECAS];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });

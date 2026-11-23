@@ -131,6 +131,20 @@ input:disabled,textarea:disabled,select:disabled{background:#F2F5F7;color:var(--
     </div>
   </section>
 
+  <!-- NOME (obrigatório no primeiro acesso) -->
+  <section id="telaNome" class="centro" hidden>
+    <div class="card">
+      <b>Como você se chama?</b>
+      <p class="muted">Seu nome aparece para a equipe em quem lançou e em quem moveu cada processo. Preencha para começar a usar o app.</p>
+      <form id="fNome">
+        <label>Nome e sobrenome</label><input type="text" id="nNome" autocomplete="name" autocapitalize="words" maxlength="60" required>
+        <div id="nErro" class="aviso"></div>
+        <div class="row" style="margin-top:12px"><button class="btn" id="bNome">Continuar</button>
+          <button type="button" class="btn per" id="bNomeSair">Sair</button></div>
+      </form>
+    </div>
+  </section>
+
   <!-- PROCESSOS -->
   <section class="tab" id="tab-processos">
     <div class="card" id="boxLancar">

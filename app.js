@@ -713,6 +713,7 @@ async function verificarLocalAntigo() {
 function mostrar(tela) {
   $('telaConfig').hidden = tela !== 'config';
   $('telaLogin').hidden = tela !== 'login';
+  $('telaNome').hidden = tela !== 'nome';
   $('nav').hidden = tela !== 'app';
   document.body.classList.toggle('semnav', tela !== 'app');
   document.querySelectorAll('.tab').forEach(s => s.classList.toggle('on', tela === 'app' && s.id === 'tab-' + abaAtual));
@@ -725,14 +726,31 @@ function irPara(tab) {
   $('hTitulo').textContent = { processos: 'Processos', lista: 'Lista para impressão', ajustes: 'Ajustes' }[tab];
   window.scrollTo(0, 0);
 }
+// Nome é obrigatório: pelo menos 3 letras (sem contar espaços).
+const nomeValido = n => (n || '').replace(/\s/g, '').length >= 3;
 async function entrouNoApp(user) {
   usuario = user;
+  try { await carregarPerfis(); } catch { }
+  if (perfis.size && !nomeValido(meuPerfil().nome)) { pedirNome(); return; }
   mostrar('app'); irPara(abaAtual);
   try { await carregarTudo(); } catch (e) { toast('Erro ao carregar: ' + msgErro(e), 5000); }
   // primeira vez com setor "Compras" ou sem setor → já mostra o que está com o setor
   if (filtros.p.f === 'todos' && meuSetor() && !ls.get('filtroEscolhido', false)) { filtros.p.f = 'comigo'; render(); }
   assinarTempoReal();
   verificarLocalAntigo();
+}
+function pedirNome() {
+  $('nErro').textContent = ''; $('nNome').value = '';
+  $('hTitulo').textContent = 'Capas de Pagamento';
+  mostrar('nome'); $('nNome').focus();
+}
+async function salvarNome(nome) {
+  nome = nome.trim().replace(/\s+/g, ' ');
+  if (!nomeValido(nome)) return 'Escreva seu nome (pelo menos 3 letras).';
+  const { data, error } = await sb.from('perfis').update({ nome }).eq('id', usuario.id).select();
+  if (error || !data.length) return 'Erro: ' + (error ? msgErro(error) : 'perfil não encontrado');
+  perfis.set(usuario.id, data[0]);
+  return '';
 }
 function saiuDoApp() {
   usuario = null; processos = new Map(); perfis = new Map();
@@ -807,11 +825,18 @@ $('modelo').onchange = e => { ls.set('modelo', e.target.value); toast('Modelo sa
 $('diasParado').value = String(diasParado());
 $('diasParado').onchange = e => { ls.set('diasParado', Number(e.target.value)); render(); toast('Alerta ajustado.'); };
 $('bSalvarNome').onclick = async () => {
-  const nome = $('aNome').value.trim();
-  const { data, error } = await sb.from('perfis').update({ nome }).eq('id', usuario.id).select();
-  if (error || !data.length) { toast('Erro: ' + (error ? msgErro(error) : 'perfil não encontrado')); return; }
-  perfis.set(usuario.id, data[0]); renderAjustes(); toast('Nome salvo.');
+  const erro = await salvarNome($('aNome').value);
+  if (erro) { toast(erro); return; }
+  renderAjustes(); render(); toast('Nome salvo.');
 };
+$('fNome').addEventListener('submit', async e => {
+  e.preventDefault(); $('nErro').textContent = ''; $('bNome').disabled = true;
+  const erro = await salvarNome($('nNome').value);
+  $('bNome').disabled = false;
+  if (erro) { $('nErro').textContent = erro; $('nNome').focus(); return; }
+  entrouNoApp(usuario);
+});
+$('bNomeSair').onclick = () => sb.auth.signOut();
 $('aEquipe').addEventListener('change', async e => {
   const s = e.target.closest('[data-pset]'), a = e.target.closest('[data-padm]');
   const id = (s || a)?.dataset.pset || (s || a)?.dataset.padm; if (!id) return;

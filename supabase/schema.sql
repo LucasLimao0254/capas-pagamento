@@ -4,10 +4,11 @@
 
 -- ===================================================================================
 -- Fluxo do processo (9 etapas). Setor responsável = quem pode mexer no processo.
+-- Compras monta → Contabilidade → (devolve ao Compras) → Controle Interno → pagamento.
 --   montagem            1. Montagem (capa)                       compras
---   controle            2. No Controle Interno                   controle
---   enc_contabilidade   3. Encaminhado à Contabilidade           controle (registra pela Contabilidade)
---   contabilidade       4. Devolvido pela Contabilidade          controle (registra pela Contabilidade)
+--   enc_contabilidade   2. Encaminhado à Contabilidade           compras (registra a devolução)
+--   contabilidade       3. Devolvido pela Contabilidade          compras (encaminha ao Controle)
+--   controle            4. No Controle Interno                   controle
 --   correcao            5. Devolvido ao Compras p/ correção      compras
 --   controle_corrigido  6. No Controle (corrigido)               controle
 --   pagamento           7. Encaminhado p/ pagamento              controle (registra pelo Financeiro)
@@ -53,7 +54,7 @@ language sql stable security definer set search_path = public as $$
 $$;
 create or replace function public.setor_responsavel(etapa text) returns text
 language sql immutable as $$
-  select case when etapa in ('montagem', 'correcao') then 'compras'
+  select case when etapa in ('montagem', 'enc_contabilidade', 'contabilidade', 'correcao') then 'compras'
               when etapa = 'concluido' then null
               else 'controle' end
 $$;
@@ -209,11 +210,11 @@ create trigger processos_depois after insert or update on public.processos
 create or replace function public.transicao_ok(de text, para text) returns boolean
 language sql immutable as $$
   select (de, para) in (
-    ('montagem', 'controle'),
-    ('controle', 'enc_contabilidade'), ('controle', 'correcao'),
-    ('controle_corrigido', 'enc_contabilidade'), ('controle_corrigido', 'correcao'),
+    ('montagem', 'enc_contabilidade'),
     ('enc_contabilidade', 'contabilidade'),
-    ('contabilidade', 'pagamento'),
+    ('contabilidade', 'controle'),
+    ('controle', 'pagamento'), ('controle', 'correcao'),
+    ('controle_corrigido', 'pagamento'), ('controle_corrigido', 'correcao'),
     ('correcao', 'controle_corrigido'),
     ('pagamento', 'pos_pagamento'),
     ('pos_pagamento', 'concluido'))

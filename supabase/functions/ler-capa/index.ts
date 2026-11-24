@@ -197,7 +197,7 @@ Deno.serve(async (req) => {
   if (!proc) return json({ erro: "Processo não encontrado." }, 404);
   if (proc.leitura !== "lendo") return json({ erro: "Esta capa não está aguardando leitura." }, 409);
   const { data: perfil } = await admin.from("perfis").select("setor, admin").eq("id", user.id).maybeSingle();
-  const responsavel = ["montagem", "correcao"].includes(proc.status) ? "compras" : proc.status === "concluido" ? null : "controle";
+  const responsavel = ["montagem", "enc_contabilidade", "contabilidade", "correcao"].includes(proc.status) ? "compras" : proc.status === "concluido" ? null : "controle";
   if (!perfil?.admin && !(perfil?.setor && perfil.setor === responsavel)) {
     return json({ erro: "Este processo não está com o seu setor." }, 403);
   }

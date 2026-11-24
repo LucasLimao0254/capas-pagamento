@@ -2,10 +2,11 @@
 /* ===================== Fluxo do processo ===================== */
 // setor = quem pode mexer no processo nesta etapa (o administrador pode tudo)
 const ETAPAS = [
+// Compras monta → Contabilidade → (devolve ao Compras) → Controle Interno → pagamento
   { id: 'montagem', n: 1, label: 'Montagem (capa)', setor: 'compras', onde: 'Compras', cor: '#3D5A73' },
-  { id: 'controle', n: 2, label: 'No Controle Interno', setor: 'controle', onde: 'Controle Interno', cor: '#5B4B8A' },
-  { id: 'enc_contabilidade', n: 3, label: 'Encaminhado à Contabilidade', setor: 'controle', onde: 'a caminho da Contabilidade', cor: '#1F6F8B' },
-  { id: 'contabilidade', n: 4, label: 'Devolvido pela Contabilidade', setor: 'controle', onde: 'Controle Interno', cor: '#1F6F8B' },
+  { id: 'enc_contabilidade', n: 2, label: 'Encaminhado à Contabilidade', setor: 'compras', onde: 'Contabilidade', cor: '#1F6F8B' },
+  { id: 'contabilidade', n: 3, label: 'Devolvido pela Contabilidade', setor: 'compras', onde: 'Compras', cor: '#1F6F8B' },
+  { id: 'controle', n: 4, label: 'No Controle Interno', setor: 'controle', onde: 'Controle Interno', cor: '#5B4B8A' },
   { id: 'correcao', n: 5, label: 'Devolvido ao Compras p/ correção', setor: 'compras', onde: 'Compras (correção)', cor: '#A33A3A' },
   { id: 'controle_corrigido', n: 6, label: 'No Controle (corrigido)', setor: 'controle', onde: 'Controle Interno', cor: '#5B4B8A' },
   { id: 'pagamento', n: 7, label: 'Encaminhado p/ pagamento', setor: 'controle', onde: 'Financeiro', cor: '#9E4A1A' },
@@ -16,11 +17,11 @@ const etInfo = id => ETAPAS.find(e => e.id === id) || ETAPAS[0];
 const SETORES = { compras: 'Compras', controle: 'Controle Interno' };
 // Botões de cada etapa: para onde vai e o que pedir
 const PASSOS = {
-  montagem: [{ para: 'controle', txt: 'Encaminhar ao Controle Interno' }],
-  controle: [{ para: 'enc_contabilidade', txt: 'Encaminhar à Contabilidade' }, { para: 'correcao', txt: 'Devolver ao Compras p/ correção', motivo: true, perigo: true }],
-  controle_corrigido: [{ para: 'enc_contabilidade', txt: 'Encaminhar à Contabilidade' }, { para: 'correcao', txt: 'Devolver ao Compras p/ correção', motivo: true, perigo: true }],
+  montagem: [{ para: 'enc_contabilidade', txt: 'Encaminhar à Contabilidade' }],
   enc_contabilidade: [{ para: 'contabilidade', txt: 'Devolvido pela Contabilidade' }],
-  contabilidade: [{ para: 'pagamento', txt: 'Encaminhado p/ pagamento / foto enviada', forma: true }],
+  contabilidade: [{ para: 'controle', txt: 'Encaminhar ao Controle Interno' }],
+  controle: [{ para: 'pagamento', txt: 'Encaminhado p/ pagamento / foto enviada', forma: true }, { para: 'correcao', txt: 'Devolver ao Compras p/ correção', motivo: true, perigo: true }],
+  controle_corrigido: [{ para: 'pagamento', txt: 'Encaminhado p/ pagamento / foto enviada', forma: true }, { para: 'correcao', txt: 'Devolver ao Compras p/ correção', motivo: true, perigo: true }],
   correcao: [{ para: 'controle_corrigido', txt: 'Devolver ao Controle corrigido' }],
   pagamento: [{ para: 'pos_pagamento', txt: 'Pago — voltou ao Controle', data: true }],
   pos_pagamento: [{ para: 'concluido', txt: 'Encaminhar à Contabilidade (final)' }],

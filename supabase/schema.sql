@@ -119,6 +119,8 @@ create table if not exists public.processos (
 alter table public.processos add column if not exists pago_em date;
 alter table public.processos add column if not exists iss_recolhido_em date;
 alter table public.processos add column if not exists irrf_recolhido_em date;
+-- Data em que o processo foi recebido: lida do carimbo/anotação "Recebido em" da capa, ou preenchida à mão.
+alter table public.processos add column if not exists data_recebimento date;
 create index if not exists processos_criado_em_idx on public.processos (criado_em desc);
 create index if not exists processos_foto_hash_idx on public.processos (foto_hash);
 

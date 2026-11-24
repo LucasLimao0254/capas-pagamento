@@ -16,7 +16,7 @@ const CORS = {
 
 const PROMPT = `Você lê fotos de capas de processo de pagamento da Prefeitura de Maracaçumé (folha amarela FUNDEB/SEMED, azul Saúde/FMUS, rosa Assistência Social/FMAS-SEMAS, branca Administração Municipal). O formulário é preenchido à mão.
 
-Extraia: Credor, Empenho, Valor, ISS (R$), IRRF (R$), Valor Líquido, Mês, Referente.
+Extraia: Credor, Empenho, Valor, ISS (R$), IRRF (R$), Valor Líquido, Mês, Referente e Data de recebimento.
 
 Como é o formulário (impresso, igual em todas as cores):
 - No alto: "Credor:", depois "Empenho:" (à esquerda) e "Doc. Caixa nº" (à direita), depois "Sub Empenho nº".
@@ -33,6 +33,7 @@ Regras:
 - Leia os números com muito cuidado (4 x 9, 1 x 7, 3 x 8). Confira se Valor - ISS - IRRF = Valor Líquido para tirar dúvida de dígitos, mas transcreva o que está escrito na capa, mesmo que a conta não feche.
 - Números como número decimal (1234.56), sem separador de milhar. Na capa a vírgula separa os centavos e o ponto separa os milhares.
 - Mês: copie como escrito no campo "Mês" (ex.: "09/2026"). Não use o campo "Data" no lugar do mês.
+- Data de recebimento: só vem de um carimbo ou anotação de recebimento/protocolo na folha (ex.: "Recebido em 18/11/2026", "Recebido 18/11", carimbo de protocolo com data). NÃO use o campo impresso "Data" da coluna da direita, nem a data de documentos ou do mês. Devolva no formato "AAAA-MM-DD"; se o ano não estiver escrito, use o ano do campo "Mês" ou do referente. Sem carimbo/anotação de recebimento, data_recebimento = null.
 - Se houver desconto em INSS, Consignações, Contribuição Sindical ou Outros Descontos, informe em "observacao" (ex.: "INSS R$ 120,00").
 - Anotações à mão fora dos campos (ex.: "Corrigir Empenho" no alto da folha) também vão em "observacao". Sem nada a anotar, "".
 - "duvida" é só para incerteza real: um dígito ou palavra que você não conseguiu decidir entre duas leituras e que muda o resultado (ex.: "Valor: 1.098,50 ou 7.098,50"). Nesse caso diga as duas leituras possíveis e liste os campos em "duvida_campos".
@@ -52,14 +53,15 @@ const SCHEMA = {
     valor_liquido: { type: ["number", "null"] },
     mes: { type: "string" },
     referente: { type: "string" },
+    data_recebimento: { type: ["string", "null"] },
     observacao: { type: "string" },
     duvida: { type: "string" },
     duvida_campos: {
       type: "array",
-      items: { type: "string", enum: ["credor", "empenho", "valor", "iss_valor", "irrf_valor", "valor_liquido", "mes", "referente"] },
+      items: { type: "string", enum: ["credor", "empenho", "valor", "iss_valor", "irrf_valor", "valor_liquido", "mes", "referente", "data_recebimento"] },
     },
   },
-  required: ["credor", "empenho", "valor", "iss_valor", "irrf_valor", "valor_liquido", "mes", "referente", "observacao", "duvida", "duvida_campos"],
+  required: ["credor", "empenho", "valor", "iss_valor", "irrf_valor", "valor_liquido", "mes", "referente", "data_recebimento", "observacao", "duvida", "duvida_campos"],
   additionalProperties: false,
 };
 
@@ -72,6 +74,15 @@ function base64(bytes: Uint8Array): string {
   return btoa(s);
 }
 const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.round(v * 100) / 100 : null);
+// "AAAA-MM-DD" válida (e não absurda) ou null
+function dataValida(v: unknown): string | null {
+  const m = typeof v === "string" ? v.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/) : null;
+  if (!m) return null;
+  const d = new Date(`${m[0]}T12:00:00Z`);
+  if (isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== m[0]) return null;
+  const ano = Number(m[1]), agora = new Date().getUTCFullYear();
+  return ano >= 2000 && ano <= agora + 1 ? m[0] : null;
+}
 
 function mensagemErro(e: unknown): string {
   if (e instanceof Anthropic.AuthenticationError) return "Chave da API do Claude inválida no servidor.";
@@ -151,6 +162,9 @@ async function processar(id: string, modelo: string) {
     }
     upd.duvida_campos = campos;
     for (const k of CAMPOS_NUM) upd[k] = num(d[k]);
+    // Sem carimbo de recebimento na capa: deixa como está (o Compras preenche à mão).
+    const receb = dataValida(d.data_recebimento);
+    if (receb) upd.data_recebimento = receb;
     const obs = String(d.observacao || "").trim();
     if (obs && !p.nota) upd.nota = obs;
     await admin.from("processos").update(upd).eq("id", id);

@@ -270,11 +270,12 @@ function renderProcessos() {
       const pr = checar(c), dups = duplicatasDe(c), ret = retPendentes(c);
       // etapa logo abaixo do credor: primeiro "em que pé está", depois os detalhes
       corpo = `<div class="t"><span>${esc(c.credor || '(sem credor)')}</span><span>${fmt(montante(c))}</span></div>${rodape}`;
-      depois = `<div class="d">${c.credor === 'Diárias' ? 'Beneficiário: ' : ''}${esc(c.empenho || '-')} · ${esc(c.referente || 'N/D')}${c.mes ? ' · ' + esc(c.mes) : ''}</div>
+      depois = `<div class="d">${c.credor === 'Diárias' ? 'Beneficiário: ' : ''}${esc(c.empenho || '-')} · ${esc(c.referente || 'N/D')}${c.mes ? ' · ' + esc(c.mes) : ''}${c.data_recebimento ? ' · recebido em ' + dataDia(c.data_recebimento) : ''}</div>
         <div class="d">Líq. ${fmt(c.valor_liquido)} · ISS ${c.iss_valor != null ? `<b>${fmt(c.iss_valor)}</b>` : '-'} · IRRF ${c.irrf_valor != null ? `<b>${fmt(c.irrf_valor)}</b>` : '-'}${c.pago_em ? ` · pago em ${dataDia(c.pago_em)}` : ''}</div>
         ${c.nota ? `<div class="d">📝 ${esc(c.nota)}</div>` : ''}
         ${dups.map(d => `<div class="aviso">⚠ ${esc(textoDup(d))}</div>`).join('')}
         ${pr.map(x => `<div class="aviso ${x.grave ? '' : 'am'}">⚠ ${esc(x.t)}</div>`).join('')}
+        ${!c.data_recebimento && exigeReceb(c) ? `<div class="aviso am">⚠ Falta a data de recebimento${c.foto_path ? ' (não estava na capa)' : ''}.</div>` : ''}
         ${ret.length ? `<div class="aviso am">💰 A recolher: ${ret.map(r => r.toUpperCase()).join(' e ')}</div>` : ''}`;
     }
     return `<div class="proc${parado(c) ? ' parado' : ''}" data-id="${c.id}">
@@ -452,6 +453,14 @@ let mv = null; // { id, passo }
 function abrirMover(id, para) {
   const p = processos.get(id); if (!p) return;
   const passo = (PASSOS[p.status] || []).find(s => s.para === para); if (!passo) return;
+  // Sem data de recebimento o processo não sai do Compras: abre o editor para preencher
+  const recebNoForm = editId === id ? $('e_data_recebimento').value : p.data_recebimento;
+  if (exigeReceb(p) && !recebNoForm) {
+    toast('Preencha a data de recebimento antes de encaminhar.', 3500);
+    if (editId !== id) abrirEditor(id);
+    setTimeout(() => { $('edRecebAviso').hidden = false; $('e_data_recebimento').focus(); }, 100);
+    return;
+  }
   mv = { id, passo };
   $('mvTit').textContent = passo.txt;
   $('mvDesc').innerHTML = `<b>${esc(p.credor || '(sem credor)')}</b> · ${fmt(montante(p))}<br>${esc(etInfo(p.status).n + '. ' + etInfo(p.status).label)} → <b>${esc(etInfo(para).n + '. ' + etInfo(para).label)}</b>`;
@@ -504,7 +513,7 @@ async function recolher(id, imposto, marcar) {
 
 /* ===================== Editor ===================== */
 let editId = null, editNovo = false, editEtapa = null;
-const CAMPOS_FORM = ['e_credor', 'e_empenho', 'e_valor', 'e_valor_liquido', 'e_iss_valor', 'e_irrf_valor', 'e_mes', 'e_referente', 'e_nota'];
+const CAMPOS_FORM = ['e_credor', 'e_empenho', 'e_data_recebimento', 'e_valor', 'e_valor_liquido', 'e_iss_valor', 'e_irrf_valor', 'e_mes', 'e_referente', 'e_nota'];
 async function abrirEditor(id) {
   const c = processos.get(id); if (!c || lendoDeVerdade(c)) return;
   editId = id; editEtapa = c.status;
@@ -526,7 +535,15 @@ function preencherCampos(c) {
   CAMPOS_NUM.forEach(k => $('e_' + k).value = fmtIn(c[k]));
   $('e_mes').value = c.mes || ''; $('e_referente').value = c.referente === 'N/D' ? '' : (c.referente || '');
   $('e_nota').value = c.nota || '';
-  atualizarRotulos(); previaChecagem();
+  $('e_data_recebimento').value = c.data_recebimento || '';
+  atualizarRotulos(); previaChecagem(); avisoReceb();
+}
+// Data de recebimento: vem do carimbo da capa; sem carimbo, quem lança preenche à mão (obrigatória no lançamento).
+const exigeReceb = c => !!c && ['montagem', 'correcao'].includes(c.status);
+function avisoReceb() {
+  const c = editId && processos.get(editId);
+  $('edRecebAviso').textContent = c && c.foto_path ? 'Não havia carimbo de recebimento na capa: preencha a data.' : 'Preencha a data em que o processo foi recebido.';
+  $('edRecebAviso').hidden = !!$('e_data_recebimento').value || !exigeReceb(c) || $('e_data_recebimento').disabled;
 }
 // Etapa, botões, permissões, retenções e histórico — sem mexer no que foi digitado nos campos
 function aplicarEstadoEditor(c) {
@@ -537,6 +554,7 @@ function aplicarEstadoEditor(c) {
   CAMPOS_FORM.forEach(k => $(k).disabled = !pode);
   $('edSalvar').hidden = !pode; $('edExcluir').hidden = !pode;
   $('edReler').hidden = !(pode && c.foto_path);
+  avisoReceb();
   // retenções (ISS/IRRF) — só faz sentido depois de pago
   const linhasRet = ['iss', 'irrf'].filter(k => c[k + '_valor'] > 0).map(k => {
     const quando = c[k + '_recolhido_em'];
@@ -562,12 +580,13 @@ function aplicarEstadoEditor(c) {
 function formMudou(c) {
   const f = lerForm();
   return ['credor', 'empenho', 'mes', 'referente', ...CAMPOS_NUM].some(k => (f[k] ?? null) !== (k === 'referente' ? (c.referente || 'N/D') : (c[k] ?? (CAMPOS_NUM.includes(k) ? null : ''))))
-    || $('e_nota').value.trim() !== (c.nota || '');
+    || $('e_nota').value.trim() !== (c.nota || '')
+    || (f.data_recebimento || null) !== (c.data_recebimento || null);
 }
 const camposDoForm = () => ({ ...lerForm(), nota: $('e_nota').value.trim(), diarias: $('e_credor').value.trim() === 'Diárias' });
 function atualizarRotulos() { $('lblEmp').textContent = $('e_credor').value.trim() === 'Diárias' ? 'Beneficiário' : 'Empenho'; }
 function lerForm() {
-  const o = { credor: $('e_credor').value.trim(), empenho: $('e_empenho').value.trim(), mes: $('e_mes').value.trim(), referente: $('e_referente').value.trim() || 'N/D' };
+  const o = { credor: $('e_credor').value.trim(), empenho: $('e_empenho').value.trim(), mes: $('e_mes').value.trim(), referente: $('e_referente').value.trim() || 'N/D', data_recebimento: $('e_data_recebimento').value || null };
   CAMPOS_NUM.forEach(k => o[k] = parseNum($('e_' + k).value));
   return o;
 }
@@ -585,6 +604,10 @@ async function salvarEditor() {
   const id = editId; if (!id) return;
   const campos = { ...camposDoForm(), duvida: '', duvida_campos: [] };
   const c = processos.get(id);
+  if (exigeReceb(c) && !campos.data_recebimento) {
+    $('edRecebAviso').hidden = false; $('edRecebAviso').textContent = 'Informe a data de recebimento para salvar.';
+    $('e_data_recebimento').focus(); return;
+  }
   if (c && c.leitura !== 'ok') { campos.leitura = 'ok'; campos.leitura_erro = ''; } // erro ou leitura travada: preenchido à mão
   $('edSalvar').disabled = true;
   try { await atualizar(id, campos); editNovo = false; await fecharEditor(false); toast('Salvo.'); }
@@ -671,11 +694,11 @@ function baixar(blob, nome) {
 
 /* ===================== Exportar / importar ===================== */
 function exportarCSV() {
-  const cols = [['credor', 'Credor'], ['empenho', 'Empenho'], ['valor', 'Valor'], ['iss_valor', 'ISS'], ['irrf_valor', 'IRRF'], ['valor_liquido', 'Valor Líquido'], ['mes', 'Mês'], ['referente', 'Referente'],
+  const cols = [['credor', 'Credor'], ['empenho', 'Empenho'], ['valor', 'Valor'], ['iss_valor', 'ISS'], ['irrf_valor', 'IRRF'], ['valor_liquido', 'Valor Líquido'], ['mes', 'Mês'], ['referente', 'Referente'], ['data_recebimento', 'Recebido em'],
     ['etapa', 'Etapa'], ['dias', 'Dias na etapa'], ['pago_em', 'Pago em'], ['iss_recolhido_em', 'ISS recolhido em'], ['irrf_recolhido_em', 'IRRF recolhido em'], ['nota', 'Observação'], ['criado_por_nome', 'Lançado por'], ['criado_em', 'Lançado em']];
   const cel = v => { const s = v == null ? '' : (typeof v === 'number' ? String(v).replace('.', ',') : String(v)); return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
   const val = (c, k) => k === 'etapa' ? `${etInfo(c.status).n}. ${etInfo(c.status).label}` : k === 'dias' ? diasNaEtapa(c)
-    : ['pago_em', 'iss_recolhido_em', 'irrf_recolhido_em'].includes(k) ? dataDia(c[k]) : k === 'criado_em' ? dataHora(c[k]) : c[k];
+    : ['pago_em', 'iss_recolhido_em', 'irrf_recolhido_em', 'data_recebimento'].includes(k) ? dataDia(c[k]) : k === 'criado_em' ? dataHora(c[k]) : c[k];
   const linhas = [cols.map(c => c[1]).join(';'), ...[...processos.values()].filter(c => c.leitura === 'ok').map(c => cols.map(([k]) => cel(val(c, k))).join(';'))];
   baixar(new Blob(['﻿' + linhas.join('\r\n')], { type: 'text/csv;charset=utf-8' }), `processos-${hoje().replace(/\//g, '-')}.csv`);
 }
@@ -866,6 +889,7 @@ $('edReler').onclick = async () => {
 };
 ['e_valor', 'e_iss_valor', 'e_irrf_valor', 'e_valor_liquido'].forEach(i => $(i).oninput = previaChecagem);
 $('e_credor').oninput = atualizarRotulos;
+$('e_data_recebimento').oninput = avisoReceb;
 
 $('mvX').onclick = fecharMover;
 $('mover').addEventListener('click', e => { if (e.target === $('mover')) fecharMover(); });

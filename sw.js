@@ -1,6 +1,6 @@
 // Service worker: deixa a tela do app abrir mesmo sem internet.
 // Só guarda os arquivos do próprio app e as bibliotecas; nunca os dados do servidor.
-const CACHE = 'capas-v13';
+const CACHE = 'capas-v14';
 const BIBLIOTECAS = [
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',

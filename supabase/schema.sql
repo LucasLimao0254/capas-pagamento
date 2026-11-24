@@ -7,7 +7,7 @@
 --   montagem            1. Montagem (capa)                       compras
 --   controle            2. No Controle Interno                   controle
 --   enc_contabilidade   3. Encaminhado à Contabilidade           controle (registra pela Contabilidade)
---   contabilidade       4. Recebido pela Contabilidade           controle (registra pela Contabilidade)
+--   contabilidade       4. Devolvido pela Contabilidade          controle (registra pela Contabilidade)
 --   correcao            5. Devolvido ao Compras p/ correção      compras
 --   controle_corrigido  6. No Controle (corrigido)               controle
 --   pagamento           7. Encaminhado p/ pagamento              controle (registra pelo Financeiro)

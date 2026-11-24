@@ -767,7 +767,7 @@ function irPara(tab) {
   document.querySelectorAll('.tab').forEach(s => s.classList.toggle('on', s.id === 'tab-' + tab));
   document.querySelectorAll('nav button').forEach(b => { b.classList.toggle('on', b.dataset.tab === tab); if (b.dataset.tab === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
   atualizarBusca();
-  $('hTitulo').textContent = { processos: 'Processos', lista: 'Lista para impressão', ajustes: 'Ajustes' }[tab];
+  $('hTitulo').textContent = { processos: 'Processos', lista: 'Relatório', ajustes: 'Ajustes' }[tab];
   window.scrollTo(0, 0);
 }
 // Nome é obrigatório: pelo menos 3 letras (sem contar espaços).

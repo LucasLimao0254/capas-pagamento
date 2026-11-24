@@ -1,4 +1,4 @@
-# Capas de Pagamento
+# Protocolo de Pagamento
 
 PWA (iPhone e Android) usado pela equipe para acompanhar o processo de pagamento da Prefeitura de Maracaçumé, da montagem da capa até a volta à Contabilidade depois do pagamento.
 

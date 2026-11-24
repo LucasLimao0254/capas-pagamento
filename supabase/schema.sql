@@ -1,4 +1,4 @@
--- Capas de Pagamento — banco compartilhado no Supabase.
+-- Protocolo de Pagamento — banco compartilhado no Supabase.
 -- Como usar: painel do Supabase → SQL Editor → New query → cole este arquivo inteiro → Run.
 -- Pode rodar de novo sem perder dados: cria o que falta e atualiza bancos de versões anteriores.
 

@@ -762,7 +762,7 @@ async function entrouNoApp(user) {
 }
 function pedirNome() {
   $('nErro').textContent = ''; $('nNome').value = '';
-  $('hTitulo').textContent = 'Capas de Pagamento';
+  $('hTitulo').textContent = 'Protocolo de Pagamento';
   mostrar('nome'); $('nNome').focus();
 }
 async function salvarNome(nome) {
@@ -776,7 +776,7 @@ async function salvarNome(nome) {
 function saiuDoApp() {
   usuario = null; processos = new Map(); perfis = new Map();
   if (canal) { sb.removeChannel(canal); canal = null; }
-  $('hInfo').textContent = ''; $('hTitulo').textContent = 'Capas de Pagamento';
+  $('hInfo').textContent = ''; $('hTitulo').textContent = 'Protocolo de Pagamento';
   mostrar('login');
 }
 

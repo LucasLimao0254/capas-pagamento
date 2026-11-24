@@ -1,6 +1,6 @@
 {
-  "name": "Capas de Pagamento",
-  "short_name": "Capas",
+  "name": "Protocolo de Pagamento",
+  "short_name": "Protocolo",
   "description": "Lê fotos de capas de processo de pagamento, gera a lista em PDF e acompanha o status.",
   "lang": "pt-BR",
   "start_url": "./",

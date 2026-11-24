@@ -8,9 +8,9 @@ const ETAPAS = [
   { id: 'contabilidade', n: 4, label: 'Recebido pela Contabilidade', setor: 'controle', onde: 'Contabilidade', cor: '#1F6F8B' },
   { id: 'correcao', n: 5, label: 'Devolvido ao Compras p/ correção', setor: 'compras', onde: 'Compras (correção)', cor: '#A33A3A' },
   { id: 'controle_corrigido', n: 6, label: 'No Controle (corrigido)', setor: 'controle', onde: 'Controle Interno', cor: '#5B4B8A' },
-  { id: 'pagamento', n: 7, label: 'Encaminhado p/ pagamento', setor: 'controle', onde: 'Financeiro', cor: '#B3541E' },
-  { id: 'pos_pagamento', n: 8, label: 'No Controle após pagamento', setor: 'controle', onde: 'Controle Interno', cor: '#2E7D4F' },
-  { id: 'concluido', n: 9, label: 'Encaminhado à Contabilidade (final)', setor: null, onde: 'Contabilidade (concluído)', cor: '#6B7C8A' },
+  { id: 'pagamento', n: 7, label: 'Encaminhado p/ pagamento', setor: 'controle', onde: 'Financeiro', cor: '#9E4A1A' },
+  { id: 'pos_pagamento', n: 8, label: 'No Controle após pagamento', setor: 'controle', onde: 'Controle Interno', cor: '#276A43' },
+  { id: 'concluido', n: 9, label: 'Encaminhado à Contabilidade (final)', setor: null, onde: 'Contabilidade (concluído)', cor: '#5A6672' },
 ];
 const etInfo = id => ETAPAS.find(e => e.id === id) || ETAPAS[0];
 const SETORES = { compras: 'Compras', controle: 'Controle Interno' };
@@ -232,6 +232,7 @@ function chipsHtml(fl, extras) {
 /* ===================== Renderização: Processos ===================== */
 const BTN_DEL = id => `<button class="del" data-del="${id}" aria-label="Excluir"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg></button>`;
 const etapaPill = p => { const e = etInfo(p.status); return `<span class="etapa" style="background:${e.cor}">${e.n}. ${esc(e.label)}</span>`; };
+const TAG_PARADO = '<span class="tag"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>parado</span>';
 function botoesPassos(p) {
   if (!podeMexer(p) || p.leitura !== 'ok') return '';
   return (PASSOS[p.status] || []).map(s => `<button class="btn ${s.perigo ? 'per' : ''}" data-mv="${p.id}" data-para="${s.para}">${esc(s.txt)}</button>`).join('');
@@ -260,26 +261,25 @@ function renderProcessos() {
   $('pResumo').innerHTML = linhas.length ? `<div class="card muted">${linhas.join('<br>')}</div>` : '';
   $('pLista').innerHTML = vis.length ? vis.slice(0, limites.p).map(c => {
     const e = etInfo(c.status);
-    let corpo;
+    const rodape = `<div class="rodape">${etapaPill(c)}<span class="com">com ${esc(e.onde)} há ${diasNaEtapa(c)} dia(s)</span>${parado(c) ? TAG_PARADO : ''}</div>`;
+    let corpo, depois = rodape;
     if (lendoDeVerdade(c)) corpo = `<div class="t"><span><span class="spin"></span> Lendo capa…</span></div><div class="d">Enviada por ${esc(c.criado_por_nome || '')}</div>`;
     else if (travada(c)) corpo = `<div class="t"><span>A leitura não terminou</span></div><div class="aviso">A foto não chegou a ser lida (o app pode ter sido fechado durante o envio). ${podeMexer(c) ? 'Toque para ler de novo ou preencher.' : ''}</div>`;
     else if (c.leitura === 'erro') corpo = `<div class="t"><span>Não foi possível ler</span></div><div class="aviso">${esc(c.leitura_erro)} ${podeMexer(c) ? 'Toque para tentar de novo ou preencher.' : ''}</div>`;
     else {
       const pr = checar(c), dups = duplicatasDe(c), ret = retPendentes(c);
-      corpo = `<div class="t"><span>${esc(c.credor || '(sem credor)')}</span><span>${fmt(montante(c))}</span></div>
-        <div class="d">${c.credor === 'Diárias' ? 'Beneficiário: ' : ''}${esc(c.empenho || '-')} · ${esc(c.referente || 'N/D')}${c.mes ? ' · ' + esc(c.mes) : ''}</div>
+      // etapa logo abaixo do credor: primeiro "em que pé está", depois os detalhes
+      corpo = `<div class="t"><span>${esc(c.credor || '(sem credor)')}</span><span>${fmt(montante(c))}</span></div>${rodape}`;
+      depois = `<div class="d">${c.credor === 'Diárias' ? 'Beneficiário: ' : ''}${esc(c.empenho || '-')} · ${esc(c.referente || 'N/D')}${c.mes ? ' · ' + esc(c.mes) : ''}</div>
         <div class="d">Líq. ${fmt(c.valor_liquido)} · ISS ${c.iss_valor != null ? `<b>${fmt(c.iss_valor)}</b>` : '-'} · IRRF ${c.irrf_valor != null ? `<b>${fmt(c.irrf_valor)}</b>` : '-'}${c.pago_em ? ` · pago em ${dataDia(c.pago_em)}` : ''}</div>
         ${c.nota ? `<div class="d">📝 ${esc(c.nota)}</div>` : ''}
         ${dups.map(d => `<div class="aviso">⚠ ${esc(textoDup(d))}</div>`).join('')}
         ${pr.map(x => `<div class="aviso ${x.grave ? '' : 'am'}">⚠ ${esc(x.t)}</div>`).join('')}
         ${ret.length ? `<div class="aviso am">💰 A recolher: ${ret.map(r => r.toUpperCase()).join(' e ')}</div>` : ''}`;
     }
-    return `<div class="proc" data-id="${c.id}">
+    return `<div class="proc${parado(c) ? ' parado' : ''}" data-id="${c.id}">
       <div class="topo"><div class="c">${corpo}</div>${podeMexer(c) ? BTN_DEL(c.id) : ''}</div>
-      <div class="rodape" style="flex-wrap:wrap">
-        ${etapaPill(c)}
-        <span class="com">com ${esc(e.onde)} há ${diasNaEtapa(c)} dia(s)${parado(c) ? '<span class="tag">parado</span>' : ''}</span>
-      </div>
+      ${depois}
       ${botoesPassos(c) ? `<div class="acoes">${botoesPassos(c)}</div>` : ''}
     </div>`;
   }).join('') + botaoMais('p', vis.length) : `<div class="vazio">${processos.size ? 'Nenhum processo neste filtro.' : (podeLancar() ? 'Nenhum processo ainda.<br>Toque em <b>Adicionar capas</b> e escolha ou tire as fotos.' : 'Nenhum processo ainda.')}</div>`;
@@ -307,15 +307,28 @@ function podarSelecao() {
 function renderLista() {
   $('lChips').innerHTML = chipsHtml(filtros.l, [['abertos', 'Em andamento']]);
   const vis = filtrar(filtros.l).filter(c => c.leitura === 'ok');
-  $('lLista').innerHTML = vis.length ? vis.slice(0, limites.l).map(c => {
-    const m = selecao.has(c.id);
-    return `<label class="sel ${m ? 'marcado' : ''}" data-lid="${c.id}">
-      <input type="checkbox" ${m ? 'checked' : ''} data-chk="${c.id}">
-      <div class="c" style="flex:1;min-width:0">
-        <div class="t"><span>${esc(c.credor || '(sem credor)')}</span><span>${fmt(montante(c))}</span></div>
-        <div class="d">${esc(c.empenho || '-')} · ${esc(c.referente || 'N/D')}${c.mes ? ' · ' + esc(c.mes) : ''}</div>
-        <div class="d">${etapaPill(c)} · lançado ${dataCurta(c.criado_em)}</div>
-      </div></label>`;
+  // agrupado por credor, como sai no PDF, com quantos estão marcados e o subtotal marcado
+  const grupos = new Map();
+  for (const c of vis.slice(0, limites.l)) {
+    const k = (c.credor || '(sem credor)').trim();
+    if (!grupos.has(k)) grupos.set(k, []);
+    grupos.get(k).push(c);
+  }
+  $('lLista').innerHTML = vis.length ? [...grupos].map(([credor, itens]) => {
+    const marc = itens.filter(c => selecao.has(c.id));
+    const sub = r2(marc.reduce((s, c) => s + montante(c), 0));
+    return `<section class="grupo" aria-label="${esc(credor)}">
+      <div class="gtopo"><span>${esc(credor)}</span><span>${marc.length} de ${itens.length}${marc.length ? ` · <b>${fmt(sub)}</b>` : ''}</span></div>
+      ${itens.map(c => {
+        const m = selecao.has(c.id);
+        return `<label class="sel ${m ? 'marcado' : ''}" data-lid="${c.id}">
+        <input type="checkbox" ${m ? 'checked' : ''} data-chk="${c.id}">
+        <div class="c" style="flex:1;min-width:0">
+          <div class="t"><span>${esc(c.empenho || '-')} · ${esc(c.referente || 'N/D')}${c.mes ? ' · ' + esc(c.mes) : ''}</span><span>${fmt(montante(c))}</span></div>
+          <div class="d">${etapaPill(c)} · lançado ${dataCurta(c.criado_em)}</div>
+        </div></label>`;
+      }).join('')}
+    </section>`;
   }).join('') + botaoMais('l', vis.length) : `<div class="vazio">Nenhum processo lido neste filtro.</div>`;
   const sel = [...selecao].map(id => processos.get(id)).filter(Boolean);
   $('barra').hidden = !sel.length;
@@ -332,11 +345,17 @@ function renderAjustes() {
   $('boxAdmin').hidden = !perf.admin;
   $('bImport').hidden = !podeLancar(); // importar cria processos, e só o Compras (ou o administrador) cria
   if (!perf.admin) return;
-  $('aEquipe').innerHTML = [...perfis.values()].map(p => `<div class="pessoa">
+  // pendência: sem setor (não vê/mexe em nada) ou sem nome (vai preencher no primeiro acesso)
+  const pend = p => [!p.setor && !p.admin && 'Ainda não pode mexer em nenhum processo: escolha o setor.', !nomeValido(p.nome) && 'O nome é pedido no primeiro acesso.'].filter(Boolean);
+  const nPend = [...perfis.values()].filter(p => pend(p).length).length;
+  $('aPend').hidden = !nPend;
+  $('aPend').textContent = `${nPend} pendência${nPend > 1 ? 's' : ''}`;
+  $('aEquipe').innerHTML = [...perfis.values()].map(p => { const pe = pend(p); return `<div class="pessoa${pe.length ? ' pend' : ''}">
     <div class="c"><b>${esc(p.nome || '(sem nome)')}</b><br><span class="muted">${esc(p.email || '')}</span></div>
-    <select data-pset="${p.id}"><option value="">Sem setor</option>${Object.entries(SETORES).map(([k, v]) => `<option value="${k}" ${p.setor === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
+    <select data-pset="${p.id}" aria-label="Setor de ${esc(p.nome || p.email || 'pessoa')}"><option value="">Sem setor</option>${Object.entries(SETORES).map(([k, v]) => `<option value="${k}" ${p.setor === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
     <label><input type="checkbox" data-padm="${p.id}" ${p.admin ? 'checked' : ''}> admin</label>
-  </div>`).join('');
+    ${pe.length ? `<span class="pend-txt">${pe.join(' ')}</span>` : ''}
+  </div>`; }).join('');
 }
 
 /* ===================== Imagens ===================== */
@@ -419,7 +438,7 @@ async function lancarManual() {
 }
 async function excluir(id, perguntar = true) {
   const c = processos.get(id); if (!c) return;
-  if (perguntar && !confirm(`Excluir ${c.credor || 'este processo'}${montante(c) ? ' (' + fmt(montante(c)) + ')' : ''}?\nSai para toda a equipe.`)) return false;
+  if (perguntar && !confirm(`Excluir ${c.credor || 'este processo'}${montante(c) ? ' (' + fmt(montante(c)) + ')' : ''}?\nSai da lista de toda a equipe. Isso não pode ser desfeito.`)) return false;
   const { data, error } = await sb.from('processos').delete().eq('id', id).select('id');
   if (error || !data.length) { toast(error ? 'Erro ao excluir: ' + msgErro(error) : 'Este processo não está com o seu setor.'); return false; }
   if (c.foto_path) sb.storage.from('capas').remove([c.foto_path]).catch(() => { });
@@ -493,12 +512,12 @@ async function abrirEditor(id) {
   $('edErro').textContent = c.leitura === 'erro' ? 'Leitura falhou: ' + c.leitura_erro
     : travada(c) ? 'A leitura desta capa não terminou. Toque em "Ler de novo" ou preencha os campos e salve.' : '';
   preencherCampos(c);
-  $('edFoto').hidden = true; $('edFoto').removeAttribute('src');
+  $('edFoto').hidden = true; $('edFoto').removeAttribute('src'); $('edFoto').classList.remove('zoom'); $('edDica').hidden = true;
   aplicarEstadoEditor(c);
   $('sheet').classList.add('on');
   if (c.foto_path) {
     sb.storage.from('capas').createSignedUrl(c.foto_path, 600).then(({ data }) => {
-      if (data && editId === id) { $('edFoto').src = data.signedUrl; $('edFoto').hidden = false; }
+      if (data && editId === id) { $('edFoto').src = data.signedUrl; $('edFoto').hidden = false; $('edDica').hidden = false; }
     });
   }
 }
@@ -512,7 +531,7 @@ function preencherCampos(c) {
 // Etapa, botões, permissões, retenções e histórico — sem mexer no que foi digitado nos campos
 function aplicarEstadoEditor(c) {
   const id = c.id, pode = podeMexer(c), e = etInfo(c.status);
-  $('edEtapa').innerHTML = `${etapaPill(c)} <span class="com">com ${esc(e.onde)} há ${diasNaEtapa(c)} dia(s)${parado(c) ? '<span class="tag">parado</span>' : ''}</span>` +
+  $('edEtapa').innerHTML = `${etapaPill(c)} <span class="com">com ${esc(e.onde)} há ${diasNaEtapa(c)} dia(s)</span>${parado(c) ? TAG_PARADO : ''}` +
     (pode ? '' : `<p class="muted" style="margin:6px 0 0">Somente leitura: este processo está com ${e.setor ? SETORES[e.setor] : 'a Contabilidade (concluído)'}.</p>`);
   $('edAcoes').innerHTML = editNovo ? '' : botoesPassos(c);
   CAMPOS_FORM.forEach(k => $(k).disabled = !pode);
@@ -716,13 +735,15 @@ function mostrar(tela) {
   $('telaNome').hidden = tela !== 'nome';
   $('nav').hidden = tela !== 'app';
   document.body.classList.toggle('semnav', tela !== 'app');
+  if (tela !== 'app') $('bBusca').hidden = true;
   document.querySelectorAll('.tab').forEach(s => s.classList.toggle('on', tela === 'app' && s.id === 'tab-' + abaAtual));
 }
 let abaAtual = 'processos';
 function irPara(tab) {
   abaAtual = tab;
   document.querySelectorAll('.tab').forEach(s => s.classList.toggle('on', s.id === 'tab-' + tab));
-  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  document.querySelectorAll('nav button').forEach(b => { b.classList.toggle('on', b.dataset.tab === tab); if (b.dataset.tab === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  atualizarBusca();
   $('hTitulo').textContent = { processos: 'Processos', lista: 'Lista para impressão', ajustes: 'Ajustes' }[tab];
   window.scrollTo(0, 0);
 }
@@ -782,6 +803,36 @@ document.addEventListener('click', e => {
 });
 ligarFiltro('p', 'pChips', 'pBusca', renderProcessos);
 ligarFiltro('l', 'lChips', 'lBusca', renderLista);
+
+// Busca escondida atrás da lupa do cabeçalho (sobra espaço para os cartões). Com texto digitado, fica sempre à mostra.
+const buscaAberta = { p: false, l: false };
+const abaBusca = () => ({ processos: 'p', lista: 'l' })[abaAtual];
+function atualizarBusca() {
+  const k = abaBusca();
+  $('bBusca').hidden = !k || $('nav').hidden;
+  for (const [kk, id] of [['p', 'pBusca'], ['l', 'lBusca']]) $(id).hidden = !(buscaAberta[kk] || filtros[kk].busca);
+  const aberta = !!k && !$(k === 'p' ? 'pBusca' : 'lBusca').hidden;
+  $('bBusca').classList.toggle('on', aberta);
+  $('bBusca').setAttribute('aria-expanded', aberta);
+}
+$('bBusca').onclick = () => {
+  const k = abaBusca(); if (!k) return;
+  const inp = $(k === 'p' ? 'pBusca' : 'lBusca');
+  buscaAberta[k] = inp.hidden;
+  if (!buscaAberta[k] && filtros[k].busca) { inp.value = ''; filtros[k].busca = ''; limites[k] = POR_PAGINA; render(); }
+  atualizarBusca();
+  if (buscaAberta[k]) inp.focus();
+};
+
+$('bVerSenha').onclick = () => {
+  const s = $('lSenha'), ver = s.type === 'password';
+  s.type = ver ? 'text' : 'password';
+  $('bVerSenha').setAttribute('aria-pressed', ver);
+  $('bVerSenha').setAttribute('aria-label', ver ? 'Esconder senha' : 'Mostrar senha');
+};
+
+// Toque na foto da capa: amplia em tela cheia; toque de novo fecha.
+$('edFoto').onclick = () => $('edFoto').classList.toggle('zoom');
 $('pResumo').addEventListener('click', e => { const a = e.target.closest('[data-ir]'); if (a) { e.preventDefault(); filtros.p.f = a.dataset.ir; ls.set('filtroEscolhido', true); renderProcessos(); } });
 
 $('pLista').addEventListener('click', e => {

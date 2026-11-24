@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Capas de Pagamento</title>
-<meta name="theme-color" content="#1F3A52">
+<meta name="theme-color" content="#161826">
+<meta name="color-scheme" content="dark">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -12,103 +13,147 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
 <style>
+/* Tema Nocturne: fundo escuro azul-acinzentado, acento lilás usado como linha (contorno), nunca como preenchimento. */
 :root{
-  --pri:#1F3A52; --sec:#3D5A73; --bg:#F2F5F7; --card:#fff; --txt:#20303D; --mut:#6B7C8A;
-  --lin:#D8DEE3; --sub:#DCE4EA; --dest:#B3541E; --ok:#2E7D4F; --err:#A33A3A; --warn:#8A6D00;
+  color-scheme:dark;
+  --bg:#161826; --card:#232532; --sub:#292b31; --txt:#E9E9ED; --mut:#9397AB;
+  --lin:#3F424D; --ctl:#75798C;                 /* divisórias · bordas de controles (3:1) */
+  --acc:#9184D9; --acc-txt:#B5ABFC; --acc-tint:#2B2741; --acc-claro:#D2CEFD;
+  --dest:#F0A070; --ok:#7FD1A0; --err:#F08C8C; --warn:#F0D58A;
+  --err-bg:#4A2328; --warn-bg:#3D3418; --warn-linha:#2A2618;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
 html,body{margin:0;height:100%}
-body{font:16px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--txt);
+body{font:16px/1.35 "Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--txt);
   padding-bottom:calc(64px + env(safe-area-inset-bottom))}
 body.semnav{padding-bottom:0}
-header{position:sticky;top:0;z-index:5;background:var(--pri);color:#fff;
-  padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;gap:10px}
-header h1{font-size:18px;margin:0;flex:1}
-header small{opacity:.85;font-size:12px;display:flex;align-items:center;gap:6px}
+b,strong{font-weight:600}
+a{color:var(--acc-txt)}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+::selection{background:rgba(145,132,217,.3)}
+header{position:sticky;top:0;z-index:5;background:var(--bg);color:var(--txt);border-bottom:1px solid var(--sub);
+  padding:calc(6px + env(safe-area-inset-top)) 6px 6px 16px;min-height:56px;display:flex;align-items:center;gap:8px}
+header h1{font-size:18px;font-weight:500;margin:0;flex:1}
+header small{color:#B2B6CA;font-size:12px;display:flex;align-items:center;gap:6px}
+.hbtn{flex:none;width:44px;height:44px;border:0;border-radius:8px;background:none;color:var(--txt);display:inline-flex;align-items:center;justify-content:center;padding:0}
+.hbtn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.hbtn.on{color:var(--acc-txt);background:var(--acc-tint)}
 .ponto{width:8px;height:8px;border-radius:50%;background:#7BC79A;display:inline-block}
 .ponto.off{background:#E0A0A0}
 main{padding:12px 12px 24px;max-width:720px;margin:0 auto}
 .tab{display:none}.tab.on{display:block}
-nav{position:fixed;left:0;right:0;bottom:0;z-index:6;background:#fff;border-top:1px solid var(--lin);
+nav{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--card);border-top:1px solid var(--lin);
   display:flex;padding-bottom:env(safe-area-inset-bottom)}
 nav button{flex:1;border:0;background:none;padding:9px 4px 8px;font-size:11px;color:var(--mut);display:flex;flex-direction:column;align-items:center;gap:2px}
 nav button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-nav button.on{color:var(--pri);font-weight:600}
+nav button.on{color:var(--acc-txt);font-weight:500}
 button,select,input,textarea{font:inherit;color:inherit}
-.btn{border:0;border-radius:10px;padding:12px 14px;background:var(--pri);color:#fff;font-weight:600;min-height:44px}
-.btn.sec{background:#fff;color:var(--pri);border:1px solid var(--lin)}
-.btn.per{background:#fff;color:var(--err);border:1px solid var(--lin)}
-.btn:disabled{opacity:.5}
+/* Botões: principal = contorno no acento; secundário = texto neutro; perigo = texto vermelho */
+.btn{border:1px solid var(--acc);border-radius:8px;padding:12px 14px;background:transparent;color:var(--acc-txt);font-weight:500;min-height:44px}
+.btn:active{background:rgba(145,132,217,.18)}
+.btn.sec{background:var(--card);color:var(--txt);border-color:var(--ctl)}
+.btn.sec:active{background:#2E303D}
+.btn.per{background:var(--card);color:var(--err);border-color:var(--ctl)}
+.btn:disabled{opacity:.45}
+.link-per{display:block;margin:8px auto 0;border:0;background:none;color:var(--err);font-size:14px;min-height:44px;padding:0 12px}
 .row{display:flex;gap:8px;flex-wrap:wrap}
 .row>.btn{flex:1}
-.card{background:var(--card);border-radius:12px;padding:12px;margin:10px 0;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.card{background:var(--card);border-radius:8px;padding:12px;margin:10px 0;box-shadow:0 0 0 1px var(--lin)}
 .muted{color:var(--mut);font-size:13px}
-.proc{background:#fff;border-radius:12px;margin:10px 0;box-shadow:0 1px 2px rgba(0,0,0,.06);padding:10px 12px}
+.proc{background:var(--card);border-radius:8px;margin:10px 0;box-shadow:0 0 0 1px var(--lin);padding:10px 12px;cursor:pointer}
+.proc.parado{box-shadow:0 0 0 1px #C25C63}
 .proc .topo{display:flex;gap:8px;align-items:flex-start}
 .proc .c{flex:1;min-width:0}
-.t{display:flex;justify-content:space-between;gap:8px;font-weight:600}
+.t{display:flex;justify-content:space-between;gap:8px;font-weight:500}
 .t span:first-child{overflow-wrap:anywhere}
-.t span:last-child{white-space:nowrap}
+.t span:last-child{white-space:nowrap;font-variant-numeric:tabular-nums}
 .d{font-size:13px;color:var(--mut);margin-top:2px;overflow-wrap:anywhere}
-.d b{color:var(--dest)}
-.rodape{display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:8px}
+.d b{color:var(--dest);font-variant-numeric:tabular-nums}
+.rodape{display:flex;align-items:center;margin:6px 0 2px;gap:6px 8px;flex-wrap:wrap}
 .aviso{font-size:12.5px;color:var(--err);margin-top:4px}
 .aviso.am{color:var(--warn)}
-.pill{display:inline-block;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:600;color:#fff;white-space:nowrap}
-.chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;-webkit-overflow-scrolling:touch}
-.chips button{flex:none;border:1px solid var(--lin);background:#fff;border-radius:999px;padding:7px 12px;font-size:13px;min-height:36px}
-.chips button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
-input[type=text],input[type=email],input[type=password],input[type=search],select,textarea{width:100%;border:1px solid var(--lin);border-radius:10px;padding:10px 12px;background:#fff;min-height:44px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:2px 12px 8px;margin:0 -12px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chips button{flex:none;border:1px solid var(--ctl);background:var(--card);border-radius:6px;padding:7px 12px;font-size:13px;min-height:44px}
+.chips button.on{background:var(--acc-tint);color:var(--acc-claro);border-color:var(--acc)}
+input[type=text],input[type=email],input[type=password],input[type=search],input[type=date],select,textarea{width:100%;border:1px solid var(--ctl);border-radius:8px;padding:10px 12px;background:var(--card);min-height:44px;caret-color:var(--acc)}
+input:focus-visible,select:focus-visible,textarea:focus-visible{border-color:var(--acc);outline-offset:0}
+::placeholder{color:var(--mut)}
 label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
-.st-sel{border:0;border-radius:999px;color:#fff;font-weight:600;font-size:13px;padding:6px 10px;min-height:34px;width:auto;max-width:60%}
-.spin{width:16px;height:16px;border:2.5px solid var(--lin);border-top-color:var(--pri);border-radius:50%;animation:r 1s linear infinite;display:inline-block;vertical-align:-3px}
+.senha{position:relative}
+.senha input{padding-right:48px}
+.senha button{position:absolute;right:0;top:0;width:44px;height:44px;border:0;background:none;color:#B2B6CA;display:inline-flex;align-items:center;justify-content:center;padding:0}
+.senha button svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.st-sel{border:0;border-radius:6px;color:#fff;font-weight:500;font-size:13px;padding:6px 10px;min-height:34px;width:auto;max-width:60%}
+.spin{width:16px;height:16px;border:2.5px solid var(--lin);border-top-color:var(--acc);border-radius:50%;animation:r 1s linear infinite;display:inline-block;vertical-align:-3px}
 @keyframes r{to{transform:rotate(360deg)}}
-.del{flex:none;border:0;background:none;color:var(--err);width:40px;height:40px;margin:-6px -8px -6px 0;border-radius:8px;display:flex;align-items:center;justify-content:center}
-.del:active{background:#F6E3E3}
+.del{flex:none;border:0;background:none;color:var(--err);width:44px;height:44px;margin:-8px -10px -8px 0;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.del:active{background:var(--err-bg)}
 .del svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.sel{display:flex;gap:10px;align-items:flex-start;background:#fff;border-radius:12px;margin:8px 0;padding:10px 12px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
-.sel input{width:22px;height:22px;margin:2px 0 0;flex:none;accent-color:var(--pri)}
-.sel.marcado{outline:2px solid var(--pri)}
+/* Lista agrupada por credor */
+.grupo{background:var(--card);border-radius:8px;margin:10px 0;box-shadow:0 0 0 1px var(--lin);overflow:hidden}
+.grupo .gtopo{display:flex;justify-content:space-between;gap:8px;padding:10px 12px 8px;font-weight:500}
+.grupo .gtopo span:first-child{overflow-wrap:anywhere}
+.grupo .gtopo span:last-child{font-size:13px;color:var(--mut);font-weight:400;white-space:nowrap}
+.grupo .gtopo span:last-child b{color:var(--txt);font-variant-numeric:tabular-nums}
+.sel{display:flex;gap:10px;align-items:flex-start;padding:8px 12px;min-height:44px;border-top:1px solid var(--lin)}
+.sel input{width:22px;height:22px;margin:1px 0 0;flex:none;accent-color:var(--acc)}
+.sel.marcado{background:var(--acc-tint)}
+.sel .t{font-weight:400;font-size:14px}
 .barra{position:fixed;left:0;right:0;bottom:calc(58px + env(safe-area-inset-bottom));z-index:4;padding:8px 12px;
-  background:rgba(242,245,247,.96);border-top:1px solid var(--lin);display:flex;gap:10px;align-items:center;max-width:720px;margin:0 auto}
+  background:rgba(22,24,38,.96);border-top:1px solid var(--lin);display:flex;gap:10px;align-items:center;max-width:720px;margin:0 auto}
 .barra .info{flex:1;font-size:14px}
 #tab-lista{padding-bottom:70px}
-.sheet{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center}
+.sheet{position:fixed;inset:0;z-index:20;background:rgba(10,11,18,.72);display:none;align-items:flex-end;justify-content:center}
 .sheet.on{display:flex}
-.sheet>div{background:var(--bg);width:100%;max-width:720px;max-height:92%;overflow:auto;border-radius:16px 16px 0 0;
-  padding:14px 14px calc(16px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch}
-.sheet h2{margin:0 0 6px;font-size:17px;display:flex;justify-content:space-between;align-items:center}
-.sheet h2 button{border:0;background:none;font-size:26px;line-height:1;padding:4px 8px;color:var(--mut)}
-.foto{width:100%;border-radius:10px;margin:6px 0;display:block;background:var(--sub);min-height:60px}
-.check{display:flex;align-items:center;gap:8px;margin:10px 2px 0;font-size:14px}
-.check input{width:20px;height:20px}
+.sheet>div{background:var(--bg);width:100%;max-width:720px;max-height:94%;overflow:auto;border-radius:14px 14px 0 0;box-shadow:0 0 0 1px var(--lin);
+  padding:10px 14px calc(16px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch}
+.sheet h2{margin:0 0 6px;font-size:17px;font-weight:500;display:flex;justify-content:space-between;align-items:center}
+.sheet h2 button{border:0;background:none;font-size:26px;line-height:1;width:44px;height:44px;margin:-6px -10px -6px 0;color:var(--mut)}
+.foto{width:100%;border-radius:8px;margin:6px 0;display:block;background:var(--sub);min-height:60px;cursor:zoom-in}
+.foto.zoom{position:fixed;inset:0;z-index:40;width:100%;height:100%;margin:0;border-radius:0;object-fit:contain;background:#0A0B12;cursor:zoom-out}
+.dica-foto{font-size:12px;color:var(--mut);margin:-2px 0 4px}
+.check{display:flex;align-items:center;gap:8px;margin:10px 2px 0;font-size:14px;min-height:44px}
+.check input{width:20px;height:20px;accent-color:var(--acc)}
 .acoes{display:flex;flex-direction:column;gap:6px;margin:8px 0}
-.acoes .btn{width:100%;text-align:left;padding:10px 12px;min-height:42px;font-size:15px}
+.acoes .btn{width:100%;text-align:left;padding:10px 12px;min-height:44px;font-size:15px}
 .proc .acoes{flex-direction:row;flex-wrap:wrap;margin:8px 0 0}
-.proc .acoes .btn{width:auto;flex:1 1 auto;font-size:13.5px;padding:8px 10px;min-height:38px;text-align:center}
-.etapa{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:12.5px;font-weight:600;color:#fff;white-space:nowrap}
+.proc .acoes .btn{width:auto;flex:1 1 auto;font-size:13.5px;padding:8px 10px;min-height:44px;text-align:center}
+.etapa{display:inline-flex;align-items:center;gap:6px;border-radius:6px;padding:3px 10px;font-size:12.5px;font-weight:500;color:#F3F5FE;white-space:nowrap}
 .com{font-size:12.5px;color:var(--mut)}
-.tag{display:inline-block;border-radius:6px;padding:1px 7px;font-size:12px;font-weight:600;background:#F6E3E3;color:var(--err);margin-left:4px}
-.tag.am{background:#FFF3CF;color:var(--warn)}
+.tag{display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:500;background:var(--err-bg);color:#F4B4B4;margin-left:4px}
+.tag svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tag.am{background:var(--warn-bg);color:var(--warn)}
 .ret{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--lin);font-size:14px}
-.ret .btn{min-height:36px;padding:6px 10px;font-size:13px}
-.pessoa{display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--lin)}
+.ret .btn{min-height:44px;padding:6px 10px;font-size:13px}
+.titulo-box{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pessoa{display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--lin);flex-wrap:wrap}
 .pessoa .c{flex:1;min-width:0;font-size:14px;overflow-wrap:anywhere}
-.pessoa select{width:auto;min-height:38px;padding:6px 8px}
-.pessoa label{margin:0;display:flex;align-items:center;gap:4px;font-size:12.5px}
-input:disabled,textarea:disabled,select:disabled{background:#F2F5F7;color:var(--txt);opacity:1}
+.pessoa select{width:auto;min-height:44px;padding:6px 8px}
+.pessoa label{margin:0;display:flex;align-items:center;gap:4px;font-size:12.5px;min-height:44px}
+.pessoa label input{accent-color:var(--acc)}
+.pessoa.pend{background:var(--warn-linha);margin:0 -12px;padding:8px 12px}
+.pessoa.pend select{border-color:var(--warn)}
+.pessoa .pend-txt{flex-basis:100%;font-size:12.5px;color:var(--warn)}
+input:disabled,textarea:disabled,select:disabled{background:var(--sub);color:var(--txt);opacity:1}
 .hist{font-size:13px;color:var(--mut);margin:4px 0 0;padding-left:18px}
-#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#20303D;color:#fff;
-  padding:10px 14px;border-radius:10px;font-size:14px;z-index:30;display:none;max-width:90%;text-align:center}
+#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#3F424D;color:var(--txt);
+  box-shadow:0 0 0 1px #595D6C,0 6px 18px rgba(0,0,0,.55);padding:10px 14px;border-radius:8px;font-size:14px;z-index:30;display:none;max-width:90%;text-align:center}
 .vazio{text-align:center;color:var(--mut);padding:36px 12px}
 .centro{max-width:420px;margin:8vh auto 0}
+code{color:var(--acc-claro)}
 </style>
 </head>
 <body class="semnav">
-<header><h1 id="hTitulo">Capas de Pagamento</h1><small id="hInfo"></small></header>
+<header><h1 id="hTitulo">Capas de Pagamento</h1><small id="hInfo"></small>
+  <button class="hbtn" id="bBusca" aria-label="Buscar" aria-expanded="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+</header>
 
 <main>
   <!-- SEM CONFIGURAÇÃO -->
@@ -122,9 +167,11 @@ input:disabled,textarea:disabled,select:disabled{background:#F2F5F7;color:var(--
     <div class="card">
       <b>Entrar</b>
       <form id="fLogin">
-        <label>E-mail</label><input type="email" id="lEmail" autocomplete="username" autocapitalize="off" required>
-        <label>Senha</label><input type="password" id="lSenha" autocomplete="current-password" required>
-        <div id="lErro" class="aviso"></div>
+        <label for="lEmail">E-mail</label><input type="email" id="lEmail" autocomplete="username" autocapitalize="off" required>
+        <label for="lSenha">Senha</label>
+        <div class="senha"><input type="password" id="lSenha" autocomplete="current-password" required>
+          <button type="button" id="bVerSenha" aria-label="Mostrar senha" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+        <div id="lErro" class="aviso" role="alert"></div>
         <div class="row" style="margin-top:12px"><button class="btn" id="bEntrar">Entrar</button></div>
       </form>
       <p class="muted">Não tem acesso ou esqueceu a senha? Fale com quem administra o app.</p>
@@ -137,8 +184,8 @@ input:disabled,textarea:disabled,select:disabled{background:#F2F5F7;color:var(--
       <b>Como você se chama?</b>
       <p class="muted">Seu nome aparece para a equipe em quem lançou e em quem moveu cada processo. Preencha para começar a usar o app.</p>
       <form id="fNome">
-        <label>Nome e sobrenome</label><input type="text" id="nNome" autocomplete="name" autocapitalize="words" maxlength="60" required>
-        <div id="nErro" class="aviso"></div>
+        <label for="nNome">Nome e sobrenome</label><input type="text" id="nNome" autocomplete="name" autocapitalize="words" maxlength="60" required aria-describedby="nErro">
+        <div id="nErro" class="aviso" role="alert"></div>
         <div class="row" style="margin-top:12px"><button class="btn" id="bNome">Continuar</button>
           <button type="button" class="btn per" id="bNomeSair">Sair</button></div>
       </form>
@@ -150,12 +197,12 @@ input:disabled,textarea:disabled,select:disabled{background:#F2F5F7;color:var(--
     <div class="card" id="boxLancar">
       <div class="row"><button class="btn" id="bAdd">＋ Adicionar capas (fotos)</button></div>
       <label class="check"><input type="checkbox" id="chkDiarias"> Lançar estas fotos sob "Diárias"</label>
-      <div class="row" style="margin-top:10px"><button class="btn sec" id="bManual">Lançar manual</button></div>
+      <div class="row" style="margin-top:6px"><button class="btn sec" id="bManual">Lançar manual</button></div>
       <input type="file" id="fotos" accept="image/*" multiple hidden>
     </div>
     <div class="card muted" id="boxSetor" hidden></div>
-    <input type="search" id="pBusca" placeholder="Buscar credor, empenho, referente…">
-    <div class="chips" id="pChips" style="margin-top:8px"></div>
+    <input type="search" id="pBusca" aria-label="Buscar processos" placeholder="Buscar credor, empenho, referente…" hidden>
+    <div class="chips" id="pChips" role="group" aria-label="Filtros" style="margin-top:8px"></div>
     <div id="pResumo"></div>
     <div id="pLista"></div>
   </section>
@@ -163,12 +210,12 @@ input:disabled,textarea:disabled,select:disabled{background:#F2F5F7;color:var(--
   <!-- LISTA (PDF) -->
   <section class="tab" id="tab-lista">
     <div class="card">
-      <label style="margin-top:0">Título da lista</label>
+      <label for="titulo" style="margin-top:0">Título da lista</label>
       <input type="text" id="titulo" value="Pagamento">
-      <p class="muted" style="margin-bottom:0">Marque os processos que entram na lista e toque em Gerar PDF.</p>
+      <p class="muted" style="margin-bottom:0">Marque os processos que entram na lista. O PDF sai agrupado por credor, como abaixo.</p>
     </div>
-    <input type="search" id="lBusca" placeholder="Buscar credor, empenho, referente…">
-    <div class="chips" id="lChips" style="margin-top:8px"></div>
+    <input type="search" id="lBusca" aria-label="Buscar na lista" placeholder="Buscar credor, empenho, referente…" hidden>
+    <div class="chips" id="lChips" role="group" aria-label="Filtros" style="margin-top:8px"></div>
     <div class="row" style="margin-bottom:4px">
       <button class="btn sec" id="bSelVis">Marcar todos visíveis</button>
       <button class="btn sec" id="bLimpar">Limpar seleção</button>
@@ -185,19 +232,18 @@ input:disabled,textarea:disabled,select:disabled{background:#F2F5F7;color:var(--
     <div class="card">
       <b>Sua conta</b>
       <p class="muted" id="aEmail"></p>
-      <label>Seu nome (aparece em quem lançou e em quem moveu cada etapa)</label>
+      <label for="aNome">Seu nome (aparece em quem lançou e em quem moveu cada etapa)</label>
       <input type="text" id="aNome" autocomplete="name">
-      <div class="row" style="margin-top:10px"><button class="btn" id="bSalvarNome">Salvar nome</button>
-        <button class="btn per" id="bSair">Sair</button></div>
+      <div class="row" style="margin-top:10px"><button class="btn" id="bSalvarNome">Salvar nome</button></div>
     </div>
     <div class="card" id="boxAdmin" hidden>
-      <b>Equipe (administrador)</b>
+      <div class="titulo-box"><b>Equipe (administrador)</b><span class="tag am" id="aPend" hidden></span></div>
       <p class="muted">Defina o setor de cada pessoa. Sem setor, a pessoa só visualiza. Para cadastrar alguém novo: painel do Supabase → Authentication → Users → Add user.</p>
       <div id="aEquipe"></div>
     </div>
     <div class="card">
       <b>Alertas</b>
-      <label>Avisar processo parado na mesma etapa há mais de</label>
+      <label for="diasParado">Avisar processo parado na mesma etapa há mais de</label>
       <select id="diasParado">
         <option value="2">2 dias</option><option value="3">3 dias</option><option value="5">5 dias</option>
         <option value="7">7 dias</option><option value="10">10 dias</option><option value="15">15 dias</option>
@@ -206,7 +252,7 @@ input:disabled,textarea:disabled,select:disabled{background:#F2F5F7;color:var(--
     <div class="card">
       <b>Leitura das capas</b>
       <p class="muted">As fotos são lidas no servidor pela API do Claude; a chave fica guardada lá, não no celular.</p>
-      <label>Modelo</label>
+      <label for="modelo">Modelo</label>
       <select id="modelo">
         <option value="claude-opus-5-5">Claude Opus 5.5 (mais preciso — padrão) ≈ US$ 0,03/capa</option>
         <option value="claude-sonnet-5-5">Claude Sonnet 5.5 ≈ US$ 0,01/capa</option>
@@ -229,13 +275,14 @@ input:disabled,textarea:disabled,select:disabled{background:#F2F5F7;color:var(--
       <b>Instalar no iPhone</b>
       <p class="muted">Abra este endereço no Safari → botão Compartilhar → "Adicionar à Tela de Início".</p>
     </div>
+    <div class="row" style="margin:18px 0 4px"><button class="btn per" id="bSair">Sair da conta</button></div>
   </section>
 </main>
 
 <nav id="nav" hidden>
-  <button data-tab="processos" class="on"><svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>Processos</button>
-  <button data-tab="lista"><svg viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6z"/></svg>Lista (PDF)</button>
-  <button data-tab="ajustes"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.3l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2.3-1.3L14 3h-4l-.3 2.5a7 7 0 0 0-2.3 1.3l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .9.1 1.3l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2.3 1.3L10 21h4l.3-2.5a7 7 0 0 0 2.3-1.3l2.3 1 2-3.4-2-1.5c.1-.4.1-.9.1-1.3z"/></svg>Ajustes</button>
+  <button data-tab="processos" class="on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>Processos</button>
+  <button data-tab="lista"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6z"/></svg>Lista (PDF)</button>
+  <button data-tab="ajustes"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.3l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2.3-1.3L14 3h-4l-.3 2.5a7 7 0 0 0-2.3 1.3l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .9.1 1.3l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2.3 1.3L10 21h4l.3-2.5a7 7 0 0 0 2.3-1.3l2.3 1 2-3.4-2-1.5c.1-.4.1-.9.1-1.3z"/></svg>Ajustes</button>
 </nav>
 
 <!-- EDITOR -->
@@ -244,25 +291,26 @@ input:disabled,textarea:disabled,select:disabled{background:#F2F5F7;color:var(--
   <div id="edEtapa"></div>
   <div id="edAcoes" class="acoes"></div>
   <div id="edErro" class="aviso"></div>
-  <img id="edFoto" class="foto" alt="Foto da capa" hidden>
-  <label>Credor</label><input type="text" id="e_credor">
-  <label id="lblEmp">Empenho</label><input type="text" id="e_empenho">
+  <img id="edFoto" class="foto" alt="Foto da capa — toque para ampliar" hidden>
+  <div class="dica-foto" id="edDica" hidden>Toque na foto para ampliar.</div>
+  <label for="e_credor">Credor</label><input type="text" id="e_credor">
+  <label id="lblEmp" for="e_empenho">Empenho</label><input type="text" id="e_empenho">
   <div class="g2">
-    <div><label>Valor (R$)</label><input type="text" inputmode="decimal" id="e_valor"></div>
-    <div><label>Valor Líquido (R$)</label><input type="text" inputmode="decimal" id="e_valor_liquido"></div>
-    <div><label>ISS (R$)</label><input type="text" inputmode="decimal" id="e_iss_valor"></div>
-    <div><label>IRRF (R$)</label><input type="text" inputmode="decimal" id="e_irrf_valor"></div>
-    <div><label>Mês</label><input type="text" id="e_mes"></div>
-    <div><label>Referente</label><input type="text" id="e_referente"></div>
+    <div><label for="e_valor">Valor (R$)</label><input type="text" inputmode="decimal" id="e_valor"></div>
+    <div><label for="e_valor_liquido">Valor Líquido (R$)</label><input type="text" inputmode="decimal" id="e_valor_liquido"></div>
+    <div><label for="e_iss_valor">ISS (R$)</label><input type="text" inputmode="decimal" id="e_iss_valor"></div>
+    <div><label for="e_irrf_valor">IRRF (R$)</label><input type="text" inputmode="decimal" id="e_irrf_valor"></div>
+    <div><label for="e_mes">Mês</label><input type="text" id="e_mes"></div>
+    <div><label for="e_referente">Referente</label><input type="text" id="e_referente"></div>
   </div>
-  <label>Observação</label><textarea id="e_nota" rows="2"></textarea>
+  <label for="e_nota">Observação</label><textarea id="e_nota" rows="2"></textarea>
   <div id="edChecagem"></div>
   <div id="edRet"></div>
   <div class="row" style="margin-top:14px" id="edBotoes">
     <button class="btn" id="edSalvar">Salvar</button>
     <button class="btn sec" id="edReler" hidden>Ler de novo</button>
-    <button class="btn per" id="edExcluir">Excluir</button>
   </div>
+  <button class="link-per" id="edExcluir">Excluir processo…</button>
   <div id="edInfo" class="muted" style="margin-top:12px"></div>
 </div></div>
 
@@ -271,15 +319,15 @@ input:disabled,textarea:disabled,select:disabled{background:#F2F5F7;color:var(--
   <h2><span id="mvTit">Mover processo</span><button id="mvX" aria-label="Fechar">×</button></h2>
   <p class="muted" id="mvDesc"></p>
   <div id="mvBoxForma" hidden>
-    <label>Como foi encaminhado</label>
+    <label for="mvForma">Como foi encaminhado</label>
     <select id="mvForma"><option value="Processo físico encaminhado">Processo físico encaminhado</option><option value="Foto enviada para pagamento">Foto enviada para pagamento</option></select>
   </div>
-  <div id="mvBoxData" hidden><label>Data do pagamento</label><input type="date" id="mvData"></div>
-  <label id="mvLblObs">Observação (opcional)</label><textarea id="mvObs" rows="3"></textarea>
+  <div id="mvBoxData" hidden><label for="mvData">Data do pagamento</label><input type="date" id="mvData"></div>
+  <label id="mvLblObs" for="mvObs">Observação (opcional)</label><textarea id="mvObs" rows="3"></textarea>
   <div id="mvErro" class="aviso"></div>
   <div class="row" style="margin-top:12px"><button class="btn" id="mvOk">Confirmar</button></div>
 </div></div>
-<div id="toast"></div>
+<div id="toast" role="status"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>

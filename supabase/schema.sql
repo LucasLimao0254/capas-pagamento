@@ -122,6 +122,8 @@ alter table public.processos add column if not exists iss_recolhido_em date;
 alter table public.processos add column if not exists irrf_recolhido_em date;
 -- Data em que o processo foi recebido: lida do carimbo/anotação "Recebido em" da capa, ou preenchida à mão.
 alter table public.processos add column if not exists data_recebimento date;
+-- Quando o servidor começou a ler a capa (evita duas leituras da mesma foto ao mesmo tempo).
+alter table public.processos add column if not exists leitura_pedida_em timestamptz;
 create index if not exists processos_criado_em_idx on public.processos (criado_em desc);
 create index if not exists processos_foto_hash_idx on public.processos (foto_hash);
 
@@ -178,9 +180,31 @@ begin
     new.criado_por := auth.uid();
     new.criado_por_nome := public.nome_usuario();
     new.status_por_nome := public.nome_usuario();
-  elsif new.status is distinct from old.status then
+    -- Pagamento e recolhimentos só pelos botões; a foto é ligada depois do envio (veja abaixo).
     new.status_em := now();
-    new.status_por_nome := public.nome_usuario();
+    new.pago_em := null; new.iss_recolhido_em := null; new.irrf_recolhido_em := null;
+    new.foto_path := null; new.leitura_pedida_em := null;
+    if not public.sou_admin() then new.criado_em := now(); end if; -- o administrador importa backups com a data original
+  else
+    -- Campos do sistema: ninguém altera pelo app (são restaurados em silêncio).
+    new.id := old.id;
+    new.criado_em := old.criado_em; new.criado_por := old.criado_por; new.criado_por_nome := old.criado_por_nome;
+    new.foto_hash := old.foto_hash; new.leitura_pedida_em := old.leitura_pedida_em;
+    if new.status is distinct from old.status then
+      new.status_em := now();
+      new.status_por_nome := public.nome_usuario();
+    else
+      new.status_em := old.status_em; new.status_por_nome := old.status_por_nome;
+    end if;
+    -- A foto só é ligada uma vez, ao próprio processo (<id>.jpg), logo após o envio.
+    if new.foto_path is distinct from old.foto_path
+       and not (old.foto_path is null and new.foto_path = old.id::text || '.jpg') then
+      new.foto_path := old.foto_path;
+    end if;
+    -- "Ler de novo" só faz sentido com foto.
+    if new.leitura = 'lendo' and old.leitura <> 'lendo' and new.foto_path is null then
+      raise exception 'Este processo não tem foto para ler.';
+    end if;
   end if;
   new.alterado_em := now();
   new.alterado_por_nome := public.nome_usuario();
@@ -233,6 +257,9 @@ begin
   if p_para = 'correcao' and coalesce(trim(p_obs), '') = '' then raise exception 'Informe o motivo da devolução.'; end if;
   if p_para = 'pos_pagamento' and p_pago_em is null then raise exception 'Informe a data do pagamento.'; end if;
   if (select leitura from processos where id = p_id) <> 'ok' then raise exception 'Termine a leitura/correção da capa antes de encaminhar.'; end if;
+  if atual in ('montagem', 'correcao') and (select data_recebimento from processos where id = p_id) is null then
+    raise exception 'Preencha a data de recebimento antes de encaminhar.';
+  end if;
   perform set_config('app.movendo', 'sim', true);
   perform set_config('app.obs', coalesce(trim(p_obs), ''), true);
   update processos set status = p_para,
@@ -251,7 +278,10 @@ begin
   if auth.uid() is null then raise exception 'Faça login.'; end if;
   select status into atual from processos where id = p_id for update;
   select * into ult from status_historico where processo_id = p_id order by id desc limit 1;
-  if ult.id is null or ult.de is null or ult.para <> atual then raise exception 'Não há passo para desfazer.'; end if;
+  -- Só desfaz um passo normal (não desfaz um "desfazer", que refaria o passo sem as checagens).
+  if ult.id is null or ult.de is null or ult.para <> atual or not transicao_ok(ult.de, ult.para) then
+    raise exception 'Não há passo para desfazer.';
+  end if;
   if not pode_mexer(ult.de) then raise exception 'Só o setor que fez o passo pode desfazê-lo.'; end if;
   perform set_config('app.movendo', 'sim', true);
   perform set_config('app.obs', 'Desfeito: volta para a etapa anterior', true);
@@ -310,7 +340,13 @@ create policy "compras cria"  on public.processos for insert to authenticated
   with check (public.sou_admin() or (public.meu_setor() = 'compras' and status = 'montagem'));
 create policy "setor altera" on public.processos for update to authenticated
   using (public.pode_mexer(status)) with check (true);
-create policy "setor exclui" on public.processos for delete to authenticated using (public.pode_mexer(status));
+-- Excluir apaga o histórico junto: o Compras só exclui na Montagem (antes de sair do setor); depois disso, só o administrador.
+create or replace function public.pode_excluir(etapa text) returns boolean
+language sql stable as $$
+  select public.sou_admin() or (etapa = 'montagem' and public.meu_setor() = 'compras')
+$$;
+grant execute on function public.pode_excluir(text) to authenticated;
+create policy "setor exclui" on public.processos for delete to authenticated using (public.pode_excluir(status));
 
 drop policy if exists "logados leem" on public.status_historico;
 create policy "logados leem" on public.status_historico for select to authenticated using (true);
@@ -328,6 +364,8 @@ do $$ begin alter publication supabase_realtime add table public.perfis; excepti
 -- ============ Fotos das capas (privadas, só para logados) ============
 insert into storage.buckets (id, name, public) values ('capas', 'capas', false)
   on conflict (id) do nothing;
+-- Só fotos JPEG de até 10 MB (o app já reduz a foto antes de enviar).
+update storage.buckets set file_size_limit = 10485760, allowed_mime_types = array['image/jpeg'] where id = 'capas';
 
 drop policy if exists "capas: logados leem" on storage.objects;
 drop policy if exists "capas: logados enviam" on storage.objects;
@@ -338,12 +376,13 @@ drop policy if exists "capas: setor exclui" on storage.objects;
 create or replace function public.pode_apagar_foto(arquivo text) returns boolean
 language sql stable security definer set search_path = public as $$
   select public.sou_admin()
-      or exists (select 1 from processos p where p.foto_path = arquivo and public.pode_mexer(p.status))
+      or exists (select 1 from processos p where p.foto_path = arquivo and public.pode_excluir(p.status))
       or (public.meu_setor() is not null and not exists (select 1 from processos p where p.foto_path = arquivo))
 $$;
 grant execute on function public.pode_apagar_foto(text) to authenticated;
 create policy "capas: logados leem"  on storage.objects for select to authenticated using (bucket_id = 'capas');
 create policy "capas: compras envia" on storage.objects for insert to authenticated
-  with check (bucket_id = 'capas' and (public.sou_admin() or public.meu_setor() = 'compras'));
+  with check (bucket_id = 'capas' and (public.sou_admin() or public.meu_setor() = 'compras')
+              and name ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jpg$'); -- só <id do processo>.jpg
 create policy "capas: setor exclui"  on storage.objects for delete to authenticated
   using (bucket_id = 'capas' and public.pode_apagar_foto(name));

@@ -2,6 +2,8 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
+<!-- Só roda código deste site e das 3 bibliotecas abaixo (conferidas pelo "integrity"); só conversa com o Supabase do projeto. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data: https://dpxxkpapvvzisknvxldx.supabase.co; connect-src 'self' https://dpxxkpapvvzisknvxldx.supabase.co wss://dpxxkpapvvzisknvxldx.supabase.co; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Protocolo de Pagamento</title>
 <meta name="theme-color" content="#161826">
@@ -49,7 +51,7 @@ main{padding:12px 12px 24px;max-width:720px;margin:0 auto}
 .tab{display:none}.tab.on{display:block}
 nav{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--card);border-top:1px solid var(--lin);
   display:flex;padding-bottom:env(safe-area-inset-bottom)}
-nav button{flex:1;border:0;background:none;padding:9px 4px 8px;font-size:11px;color:var(--mut);display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button{flex:1;border:0;background:none;padding:8px 4px 7px;font-size:12px;color:var(--mut);display:flex;flex-direction:column;align-items:center;gap:2px}
 nav button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 nav button.on{color:var(--acc-txt);font-weight:500}
 button,select,input,textarea{font:inherit;color:inherit}
@@ -73,13 +75,14 @@ button,select,input,textarea{font:inherit;color:inherit}
 .t span:first-child{overflow-wrap:anywhere}
 .t span:last-child{white-space:nowrap;font-variant-numeric:tabular-nums}
 .d{font-size:13px;color:var(--mut);margin-top:2px;overflow-wrap:anywhere}
+.d.linha{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:4px}
 .d b{color:var(--dest);font-variant-numeric:tabular-nums}
 .rodape{display:flex;align-items:center;margin:6px 0 2px;gap:6px 8px;flex-wrap:wrap}
 .aviso{font-size:12.5px;color:var(--err);margin-top:4px}
 .aviso.am{color:var(--warn)}
 .chips{display:flex;gap:6px;overflow-x:auto;padding:2px 12px 8px;margin:0 -12px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .chips::-webkit-scrollbar{display:none}
-.chips button{flex:none;border:1px solid var(--ctl);background:var(--card);border-radius:6px;padding:7px 12px;font-size:13px;min-height:44px}
+.chips button{flex:none;border:1px solid var(--ctl);background:var(--card);border-radius:6px;padding:6px 12px;font-size:13px;min-height:40px;white-space:nowrap}
 .chips button.on{background:var(--acc-tint);color:var(--acc-claro);border-color:var(--acc)}
 input[type=text],input[type=email],input[type=password],input[type=search],input[type=date],select,textarea{width:100%;border:1px solid var(--ctl);border-radius:8px;padding:10px 12px;background:var(--card);min-height:44px;caret-color:var(--acc)}
 input:focus-visible,select:focus-visible,textarea:focus-visible{border-color:var(--acc);outline-offset:0}
@@ -112,9 +115,11 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
 #tab-lista{padding-bottom:70px}
 .sheet{position:fixed;inset:0;z-index:20;background:rgba(10,11,18,.72);display:none;align-items:flex-end;justify-content:center}
 .sheet.on{display:flex}
+.sheet>div::before{content:"";display:block;width:36px;height:4px;border-radius:2px;background:var(--lin);margin:0 auto 8px}
 .sheet>div{background:var(--bg);width:100%;max-width:720px;max-height:94%;overflow:auto;border-radius:14px 14px 0 0;box-shadow:0 0 0 1px var(--lin);
   padding:10px 14px calc(16px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch}
-.sheet h2{margin:0 0 6px;font-size:17px;font-weight:500;display:flex;justify-content:space-between;align-items:center}
+.sheet h2{margin:0 0 8px;font-size:17px;font-weight:500;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;line-height:1.3}
+.sheet h2 span{padding-top:4px;overflow-wrap:anywhere}
 .sheet h2 button{border:0;background:none;font-size:26px;line-height:1;width:44px;height:44px;margin:-6px -10px -6px 0;color:var(--mut)}
 .foto{width:100%;border-radius:8px;margin:6px 0;display:block;background:var(--sub);min-height:60px;cursor:zoom-in}
 .foto.zoom{position:fixed;inset:0;z-index:40;width:100%;height:100%;margin:0;border-radius:0;object-fit:contain;background:#0A0B12;cursor:zoom-out}
@@ -122,7 +127,7 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
 .check{display:flex;align-items:center;gap:8px;margin:10px 2px 0;font-size:14px;min-height:44px}
 .check input{width:20px;height:20px;accent-color:var(--acc)}
 .acoes{display:flex;flex-direction:column;gap:6px;margin:8px 0}
-.acoes .btn{width:100%;text-align:left;padding:10px 12px;min-height:44px;font-size:15px}
+.acoes .btn{width:100%;text-align:center;padding:10px 12px;min-height:44px;font-size:15px}
 .proc .acoes{flex-direction:row;flex-wrap:wrap;margin:8px 0 0}
 .proc .acoes .btn{width:auto;flex:1 1 auto;font-size:13.5px;padding:8px 10px;min-height:44px;text-align:center}
 .etapa{display:inline-flex;align-items:center;gap:6px;border-radius:6px;padding:3px 10px;font-size:12.5px;font-weight:500;color:#F3F5FE;white-space:nowrap}
@@ -132,10 +137,21 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
 .tag.am{background:var(--warn-bg);color:var(--warn)}
 .ret{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--lin);font-size:14px}
 .ret .btn{min-height:44px;padding:6px 10px;font-size:13px}
+/* Caixa de lançamento: ação principal em cima; Diárias e lançamento manual na mesma linha */
+.lanc-sub{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
+.lanc-sub .check{margin:0;flex:1;min-width:0}
+.lanc-sub .btn{flex:none;padding:8px 14px;font-size:14px}
+.btn.peq{padding:8px 12px;font-size:14px;white-space:nowrap}
+.resumo{line-height:1.5}
+.resumo>div{display:flex;gap:8px;align-items:flex-start;padding:3px 0}
+.resumo .spin{flex:none;margin-top:2px}
+.resumo a{text-decoration:none}
+.resumo a:active{text-decoration:underline}
+.g2 .cheia{grid-column:1/-1}
 .titulo-box{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .pessoa{display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--lin);flex-wrap:wrap}
 .pessoa .c{flex:1;min-width:0;font-size:14px;overflow-wrap:anywhere}
-.pessoa select{width:auto;min-height:44px;padding:6px 8px}
+.pessoa select{width:172px;flex:none;min-height:44px;padding:6px 8px;font-size:15px}
 .pessoa label{margin:0;display:flex;align-items:center;gap:4px;font-size:12.5px;min-height:44px}
 .pessoa label input{accent-color:var(--acc)}
 .pessoa.pend{background:var(--warn-linha);margin:0 -12px;padding:8px 12px}
@@ -145,6 +161,7 @@ input:disabled,textarea:disabled,select:disabled{background:var(--sub);color:var
 .hist{font-size:13px;color:var(--mut);margin:4px 0 0;padding-left:18px}
 #toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#3F424D;color:var(--txt);
   box-shadow:0 0 0 1px #595D6C,0 6px 18px rgba(0,0,0,.55);padding:10px 14px;border-radius:8px;font-size:14px;z-index:30;display:none;max-width:90%;text-align:center}
+body.combarra #toast{bottom:calc(136px + env(safe-area-inset-bottom))} /* não cobre a barra do PDF */
 .vazio{text-align:center;color:var(--mut);padding:36px 12px}
 .centro{max-width:420px;margin:8vh auto 0}
 code{color:var(--acc-claro)}
@@ -196,8 +213,10 @@ code{color:var(--acc-claro)}
   <section class="tab" id="tab-processos">
     <div class="card" id="boxLancar">
       <div class="row"><button class="btn" id="bAdd">＋ Adicionar capas (fotos)</button></div>
-      <label class="check"><input type="checkbox" id="chkDiarias"> Lançar estas fotos sob "Diárias"</label>
-      <div class="row" style="margin-top:6px"><button class="btn sec" id="bManual">Lançar manual</button></div>
+      <div class="lanc-sub">
+        <label class="check"><input type="checkbox" id="chkDiarias"> Lançar como "Diárias"</label>
+        <button class="btn sec" id="bManual">Lançar manual</button>
+      </div>
       <input type="file" id="fotos" accept="image/*" multiple hidden>
     </div>
     <div class="card muted" id="boxSetor" hidden></div>
@@ -217,8 +236,8 @@ code{color:var(--acc-claro)}
     <input type="search" id="lBusca" aria-label="Buscar na lista" placeholder="Buscar credor, empenho, referente…" hidden>
     <div class="chips" id="lChips" role="group" aria-label="Filtros" style="margin-top:8px"></div>
     <div class="row" style="margin-bottom:4px">
-      <button class="btn sec" id="bSelVis">Marcar todos visíveis</button>
-      <button class="btn sec" id="bLimpar">Limpar seleção</button>
+      <button class="btn sec peq" id="bSelVis">Marcar visíveis</button>
+      <button class="btn sec peq" id="bLimpar">Limpar seleção</button>
     </div>
     <div id="lLista"></div>
     <div class="barra" id="barra" hidden>
@@ -252,11 +271,11 @@ code{color:var(--acc-claro)}
     <div class="card">
       <b>Leitura das capas</b>
       <p class="muted">As fotos são lidas no servidor pela API do Claude; a chave fica guardada lá, não no celular.</p>
-      <label for="modelo">Modelo</label>
+      <label for="modelo">Modelo do Claude (Opus é o mais preciso)</label>
       <select id="modelo">
-        <option value="claude-opus-5-5">Claude Opus 5.5 (mais preciso — padrão) ≈ US$ 0,03/capa</option>
-        <option value="claude-sonnet-5-5">Claude Sonnet 5.5 ≈ US$ 0,01/capa</option>
-        <option value="claude-haiku-5-5">Claude Haiku 5.5 ≈ US$ 0,001/capa</option>
+        <option value="claude-opus-5-5">Opus 5.5 (padrão) · ≈ US$ 0,03/capa</option>
+        <option value="claude-sonnet-5-5">Sonnet 5.5 · ≈ US$ 0,01/capa</option>
+        <option value="claude-haiku-5-5">Haiku 5.5 · ≈ US$ 0,001/capa</option>
       </select>
     </div>
     <div class="card">
@@ -295,16 +314,16 @@ code{color:var(--acc-claro)}
   <div class="dica-foto" id="edDica" hidden>Toque na foto para ampliar.</div>
   <label for="e_credor">Credor</label><input type="text" id="e_credor">
   <label id="lblEmp" for="e_empenho">Empenho</label><input type="text" id="e_empenho">
-  <label for="e_data_recebimento">Data de recebimento</label><input type="date" id="e_data_recebimento" aria-describedby="edRecebAviso">
-  <div id="edRecebAviso" class="aviso am" hidden>Não havia carimbo de recebimento na capa: preencha a data.</div>
   <div class="g2">
+    <div><label for="e_data_recebimento">Data de recebimento</label><input type="date" id="e_data_recebimento" aria-describedby="edRecebAviso"></div>
+    <div><label for="e_mes">Mês</label><input type="text" id="e_mes"></div>
+    <div id="edRecebAviso" class="aviso am cheia" hidden>Não havia carimbo de recebimento na capa: preencha a data.</div>
     <div><label for="e_valor">Valor (R$)</label><input type="text" inputmode="decimal" id="e_valor"></div>
     <div><label for="e_valor_liquido">Valor Líquido (R$)</label><input type="text" inputmode="decimal" id="e_valor_liquido"></div>
     <div><label for="e_iss_valor">ISS (R$)</label><input type="text" inputmode="decimal" id="e_iss_valor"></div>
     <div><label for="e_irrf_valor">IRRF (R$)</label><input type="text" inputmode="decimal" id="e_irrf_valor"></div>
-    <div><label for="e_mes">Mês</label><input type="text" id="e_mes"></div>
-    <div><label for="e_referente">Referente</label><input type="text" id="e_referente"></div>
   </div>
+  <label for="e_referente">Referente</label><input type="text" id="e_referente">
   <label for="e_nota">Observação</label><textarea id="e_nota" rows="2"></textarea>
   <div id="edChecagem"></div>
   <div id="edRet"></div>
@@ -331,9 +350,9 @@ code{color:var(--acc-claro)}
 </div></div>
 <div id="toast" role="status"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.min.js" integrity="sha384-UagCvVPT5XXA0Hx+nJYUAGBFseHT9zBgpJMSebsAxl9lciTwbT+39j5VfRjdP5Tp" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" integrity="sha384-fCAW/rDWORTbQXSiB7mOg0QtQ5c+r0f544y6XoKjuVva0nMBlCpNUjiFeG5iMdS3" crossorigin="anonymous"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>
 </body>

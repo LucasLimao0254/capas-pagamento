@@ -71,6 +71,8 @@ const meuPerfil = () => (usuario && perfis.get(usuario.id)) || { setor: null, ad
 const souAdmin = () => !!meuPerfil().admin;
 const meuSetor = () => meuPerfil().setor;
 const podeMexer = p => souAdmin() || (!!meuSetor() && meuSetor() === etInfo(p.status).setor);
+// Excluir apaga o histórico: o Compras só exclui na Montagem; depois disso, só o administrador (mesma regra do banco).
+const podeExcluir = p => souAdmin() || (meuSetor() === 'compras' && p.status === 'montagem');
 const podeLancar = () => souAdmin() || meuSetor() === 'compras';
 const podeRecolher = () => souAdmin() || meuSetor() === 'controle';
 
@@ -193,10 +195,11 @@ function duplicatasDe(p) {
   }
   return out;
 }
-// Capa que ficou "lendo" por mais de 3 minutos (app fechou no envio ou a leitura falhou sem responder)
-const travada = p => p.leitura === 'lendo' && Date.now() - new Date(p.alterado_em || p.criado_em).getTime() > 3 * 60000;
+// Capa que ficou "lendo" por mais de 5 minutos (app fechou no envio ou a leitura falhou sem responder)
+const travada = p => p.leitura === 'lendo' && Date.now() - new Date(p.alterado_em || p.criado_em).getTime() > 5 * 60000; // o servidor libera a releitura depois de 5 minutos
 const lendoDeVerdade = p => p.leitura === 'lendo' && !travada(p);
 const textoDup = d => `${d.foto ? 'Mesma foto já enviada' : 'Possível duplicata'}: lançado por ${d.q.criado_por_nome || '?'} em ${dataCurta(d.q.criado_em)}`;
+const haDias = n => n <= 0 ? 'desde hoje' : n === 1 ? 'há 1 dia' : `há ${n} dias`;
 const diasNaEtapa = p => Math.floor((Date.now() - new Date(p.status_em).getTime()) / 86400000);
 const diasParado = () => Number(ls.get('diasParado', 3));
 const parado = p => p.status !== 'concluido' && !lendoDeVerdade(p) && diasNaEtapa(p) >= diasParado();
@@ -254,15 +257,16 @@ function renderProcessos() {
   const nParados = todos.filter(parado).length;
   const nRet = todos.filter(c => retPendentes(c).length).length;
   const linhas = [];
-  if (envio.total) linhas.push(`<span class="spin"></span> Enviando fotos: ${envio.feitas}/${envio.total}`);
-  if (lendo) linhas.push(`<span class="spin"></span> Lendo ${lendo} capa(s)…`);
-  if (erros) linhas.push(`<span style="color:var(--err)">${erros} capa(s) com erro de leitura — toque para tentar de novo.</span>`);
-  if (nParados) linhas.push(`<a href="#" data-ir="parados" style="color:var(--err)">⏱ ${nParados} processo(s) parado(s) há ${diasParado()}+ dias na mesma etapa</a>`);
-  if (nRet) linhas.push(`<a href="#" data-ir="retencoes" style="color:var(--warn)">💰 ${nRet} processo(s) pago(s) com ISS/IRRF a recolher</a>`);
-  $('pResumo').innerHTML = linhas.length ? `<div class="card muted">${linhas.join('<br>')}</div>` : '';
+  const pl = (n, um, varios) => n === 1 ? um : varios.replace('#', n);
+  if (envio.total) linhas.push(`<span class="spin"></span><span>Enviando fotos: ${envio.feitas} de ${envio.total}</span>`);
+  if (lendo) linhas.push(`<span class="spin"></span><span>${pl(lendo, 'Lendo 1 capa…', 'Lendo # capas…')}</span>`);
+  if (erros) linhas.push(`<span style="color:var(--err)">${pl(erros, '1 capa não foi lida', '# capas não foram lidas')}: toque no cartão para tentar de novo.</span>`);
+  if (nParados) linhas.push(`<a href="#" data-ir="parados" style="color:var(--err)">${pl(nParados, '1 processo parado', '# processos parados')} há ${diasParado()}+ dias na mesma etapa ›</a>`);
+  if (nRet) linhas.push(`<a href="#" data-ir="retencoes" style="color:var(--warn)">${pl(nRet, '1 processo pago', '# processos pagos')} com ISS/IRRF a recolher ›</a>`);
+  $('pResumo').innerHTML = linhas.length ? `<div class="card muted resumo">${linhas.map(l => `<div>${l}</div>`).join('')}</div>` : '';
   $('pLista').innerHTML = vis.length ? vis.slice(0, limites.p).map(c => {
     const e = etInfo(c.status);
-    const rodape = `<div class="rodape">${etapaPill(c)}<span class="com">com ${esc(e.onde)} há ${diasNaEtapa(c)} dia(s)</span>${parado(c) ? TAG_PARADO : ''}</div>`;
+    const rodape = `<div class="rodape">${etapaPill(c)}<span class="com">com ${esc(e.onde)} ${haDias(diasNaEtapa(c))}</span>${parado(c) ? TAG_PARADO : ''}</div>`;
     let corpo, depois = rodape;
     if (lendoDeVerdade(c)) corpo = `<div class="t"><span><span class="spin"></span> Lendo capa…</span></div><div class="d">Enviada por ${esc(c.criado_por_nome || '')}</div>`;
     else if (travada(c)) corpo = `<div class="t"><span>A leitura não terminou</span></div><div class="aviso">A foto não chegou a ser lida (o app pode ter sido fechado durante o envio). ${podeMexer(c) ? 'Toque para ler de novo ou preencher.' : ''}</div>`;
@@ -280,7 +284,7 @@ function renderProcessos() {
         ${ret.length ? `<div class="aviso am">💰 A recolher: ${ret.map(r => r.toUpperCase()).join(' e ')}</div>` : ''}`;
     }
     return `<div class="proc${parado(c) ? ' parado' : ''}" data-id="${c.id}">
-      <div class="topo"><div class="c">${corpo}</div>${podeMexer(c) ? BTN_DEL(c.id) : ''}</div>
+      <div class="topo"><div class="c">${corpo}</div>${podeExcluir(c) ? BTN_DEL(c.id) : ''}</div>
       ${depois}
       ${botoesPassos(c) ? `<div class="acoes">${botoesPassos(c)}</div>` : ''}
     </div>`;
@@ -327,13 +331,14 @@ function renderLista() {
         <input type="checkbox" ${m ? 'checked' : ''} data-chk="${c.id}">
         <div class="c" style="flex:1;min-width:0">
           <div class="t"><span>${esc(c.empenho || '-')} · ${esc(c.referente || 'N/D')}${c.mes ? ' · ' + esc(c.mes) : ''}</span><span>${fmt(montante(c))}</span></div>
-          <div class="d">${etapaPill(c)} · lançado ${dataCurta(c.criado_em)}</div>
+          <div class="d linha">${etapaPill(c)}<span>lançado em ${dataCurta(c.criado_em)}</span></div>
         </div></label>`;
       }).join('')}
     </section>`;
   }).join('') + botaoMais('l', vis.length) : `<div class="vazio">Nenhum processo lido neste filtro.</div>`;
   const sel = [...selecao].map(id => processos.get(id)).filter(Boolean);
   $('barra').hidden = !sel.length;
+  document.body.classList.toggle('combarra', !!sel.length && abaAtual === 'lista'); // o aviso sobe para não cobrir a barra
   $('barraInfo').innerHTML = `<b>${sel.length}</b> selecionado${sel.length > 1 ? 's' : ''} · ${fmt(r2(sel.reduce((s, c) => s + montante(c), 0)))}`;
 }
 function render() { if (!usuario) return; idxDup = null; renderProcessos(); renderLista(); }
@@ -442,7 +447,7 @@ async function excluir(id, perguntar = true) {
   const c = processos.get(id); if (!c) return;
   if (perguntar && !confirm(`Excluir ${c.credor || 'este processo'}${montante(c) ? ' (' + fmt(montante(c)) + ')' : ''}?\nSai da lista de toda a equipe. Isso não pode ser desfeito.`)) return false;
   const { data, error } = await sb.from('processos').delete().eq('id', id).select('id');
-  if (error || !data.length) { toast(error ? 'Erro ao excluir: ' + msgErro(error) : 'Este processo não está com o seu setor.'); return false; }
+  if (error || !data.length) { toast(error ? 'Erro ao excluir: ' + msgErro(error) : 'Só dá para excluir na Montagem. Depois disso, peça ao administrador.'); return false; }
   if (c.foto_path) sb.storage.from('capas').remove([c.foto_path]).catch(() => { });
   processos.delete(id); selecao.delete(id); salvarSelecao(); render();
   if (perguntar) toast('Processo excluído.');
@@ -469,6 +474,7 @@ function abrirMover(id, para) {
   $('mvBoxData').hidden = !passo.data; $('mvData').value = hojeISO();
   $('mvLblObs').textContent = passo.motivo ? 'Motivo da devolução (obrigatório)' : 'Observação (opcional)';
   $('mvObs').value = ''; $('mvErro').textContent = '';
+  $('mvOk').classList.toggle('per', !!passo.perigo); // devolução: botão vermelho, como o botão que abriu
   $('mover').classList.add('on');
   if (passo.motivo) setTimeout(() => $('mvObs').focus(), 50);
 }
@@ -549,11 +555,11 @@ function avisoReceb() {
 // Etapa, botões, permissões, retenções e histórico — sem mexer no que foi digitado nos campos
 function aplicarEstadoEditor(c) {
   const id = c.id, pode = podeMexer(c), e = etInfo(c.status);
-  $('edEtapa').innerHTML = `${etapaPill(c)} <span class="com">com ${esc(e.onde)} há ${diasNaEtapa(c)} dia(s)</span>${parado(c) ? TAG_PARADO : ''}` +
+  $('edEtapa').innerHTML = `${etapaPill(c)} <span class="com">com ${esc(e.onde)} ${haDias(diasNaEtapa(c))}</span>${parado(c) ? TAG_PARADO : ''}` +
     (pode ? '' : `<p class="muted" style="margin:6px 0 0">Somente leitura: este processo está com ${e.setor ? SETORES[e.setor] : 'a Contabilidade (concluído)'}.</p>`);
   $('edAcoes').innerHTML = editNovo ? '' : botoesPassos(c);
   CAMPOS_FORM.forEach(k => $(k).disabled = !pode);
-  $('edSalvar').hidden = !pode; $('edExcluir').hidden = !pode;
+  $('edSalvar').hidden = !pode; $('edExcluir').hidden = !podeExcluir(c);
   $('edReler').hidden = !(pode && c.foto_path);
   avisoReceb();
   // retenções (ISS/IRRF) — só faz sentido depois de pago
@@ -571,7 +577,7 @@ function aplicarEstadoEditor(c) {
     $('edInfo').innerHTML += `<br><b>Histórico</b><ul class="hist">${data.map(h => `<li>${dataHora(h.em)} — ${h.de ? '' : 'Lançado: '}${esc(etInfo(h.para).n + '. ' + etInfo(h.para).label)} (${esc(h.por_nome || '?')})${h.obs ? `<br><i>“${esc(h.obs)}”</i>` : ''}</li>`).join('')}</ul>`;
     // "Desfazer" aparece para quem fez o último passo (o setor da etapa anterior) ou para o administrador
     const ult = data[data.length - 1], atual = processos.get(id);
-    if (!editNovo && atual && ult.de && ult.para === atual.status && (souAdmin() || (meuSetor() && meuSetor() === etInfo(ult.de).setor))
+    if (!editNovo && atual && ult.de && ult.para === atual.status && (PASSOS[ult.de] || []).some(s => s.para === ult.para) && (souAdmin() || (meuSetor() && meuSetor() === etInfo(ult.de).setor))
         && !$('edAcoes').querySelector('[data-desf]')) {
       $('edAcoes').insertAdjacentHTML('beforeend', `<button class="btn sec" data-desf="${id}">↶ Desfazer último passo (${esc(etInfo(ult.de).n + '. ' + etInfo(ult.de).label)})</button>`);
     }
@@ -697,7 +703,8 @@ function baixar(blob, nome) {
 function exportarCSV() {
   const cols = [['credor', 'Credor'], ['empenho', 'Empenho'], ['valor', 'Valor'], ['iss_valor', 'ISS'], ['irrf_valor', 'IRRF'], ['valor_liquido', 'Valor Líquido'], ['mes', 'Mês'], ['referente', 'Referente'], ['data_recebimento', 'Recebido em'],
     ['etapa', 'Etapa'], ['dias', 'Dias na etapa'], ['pago_em', 'Pago em'], ['iss_recolhido_em', 'ISS recolhido em'], ['irrf_recolhido_em', 'IRRF recolhido em'], ['nota', 'Observação'], ['criado_por_nome', 'Lançado por'], ['criado_em', 'Lançado em']];
-  const cel = v => { const s = v == null ? '' : (typeof v === 'number' ? String(v).replace('.', ',') : String(v)); return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  // Texto que começa com = + - @ viraria fórmula no Excel: vai com um apóstrofo na frente.
+  const cel = v => { const s = v == null ? '' : (typeof v === 'number' ? String(v).replace('.', ',') : String(v).replace(/^[=+\-@\t\r]/, "'$&")); return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
   const val = (c, k) => k === 'etapa' ? `${etInfo(c.status).n}. ${etInfo(c.status).label}` : k === 'dias' ? diasNaEtapa(c)
     : ['pago_em', 'iss_recolhido_em', 'irrf_recolhido_em', 'data_recebimento'].includes(k) ? dataDia(c[k]) : k === 'criado_em' ? dataHora(c[k]) : c[k];
   const linhas = [cols.map(c => c[1]).join(';'), ...[...processos.values()].filter(c => c.leitura === 'ok').map(c => cols.map(([k]) => cel(val(c, k))).join(';'))];
@@ -768,6 +775,7 @@ function irPara(tab) {
   document.querySelectorAll('.tab').forEach(s => s.classList.toggle('on', s.id === 'tab-' + tab));
   document.querySelectorAll('nav button').forEach(b => { b.classList.toggle('on', b.dataset.tab === tab); if (b.dataset.tab === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
   atualizarBusca();
+  document.body.classList.toggle('combarra', tab === 'lista' && !$('barra').hidden);
   $('hTitulo').textContent = { processos: 'Processos', lista: 'Relatório', ajustes: 'Ajustes' }[tab];
   window.scrollTo(0, 0);
 }
@@ -798,6 +806,7 @@ async function salvarNome(nome) {
   return '';
 }
 function saiuDoApp() {
+  fecharMover(); editId = null; editNovo = false; editEtapa = null; $('sheet').classList.remove('on');
   usuario = null; processos = new Map(); perfis = new Map();
   if (canal) { sb.removeChannel(canal); canal = null; }
   $('hInfo').textContent = ''; $('hTitulo').textContent = 'Protocolo de Pagamento';

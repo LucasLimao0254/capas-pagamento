@@ -167,10 +167,14 @@ async function processar(id: string, modelo: string) {
     if (receb) upd.data_recebimento = receb;
     const obs = String(d.observacao || "").trim();
     if (obs && !p.nota) upd.nota = obs;
-    await admin.from("processos").update(upd).eq("id", id);
+    upd.leitura_pedida_em = null;
+    // Só grava se ainda estiver aguardando: se alguém já preencheu à mão nesse meio-tempo, o que foi digitado vale.
+    const { error: e3 } = await admin.from("processos").update(upd).eq("id", id).eq("leitura", "lendo");
+    if (e3) throw new Error("Não foi possível gravar a leitura: " + e3.message);
   } catch (e) {
     console.error("ler-capa", id, e);
-    await admin.from("processos").update({ leitura: "erro", leitura_erro: mensagemErro(e) }).eq("id", id);
+    await admin.from("processos").update({ leitura: "erro", leitura_erro: mensagemErro(e), leitura_pedida_em: null })
+      .eq("id", id).eq("leitura", "lendo");
   }
 }
 
@@ -201,6 +205,13 @@ Deno.serve(async (req) => {
   if (!perfil?.admin && !(perfil?.setor && perfil.setor === responsavel)) {
     return json({ erro: "Este processo não está com o seu setor." }, 403);
   }
+
+  // Reserva a leitura: se a mesma capa já está sendo lida (pedido repetido), não lê nem cobra de novo.
+  // Uma reserva com mais de 5 minutos é de uma leitura que morreu no meio, e pode ser refeita.
+  const limite = new Date(Date.now() - 5 * 60000).toISOString();
+  const { data: reservada } = await admin.from("processos").update({ leitura_pedida_em: new Date().toISOString() })
+    .eq("id", corpo.id).eq("leitura", "lendo").or(`leitura_pedida_em.is.null,leitura_pedida_em.lt.\"${limite}\"`).select("id");
+  if (!reservada?.length) return json({ ok: true, ja_lendo: true }, 202);
 
   // @ts-ignore EdgeRuntime existe no Supabase
   EdgeRuntime.waitUntil(processar(corpo.id, modelo));
